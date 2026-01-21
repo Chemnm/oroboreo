@@ -1,0 +1,15 @@
+# OroboreoProgress Log
+# ======================
+#
+# This file is the "shared memory" between Claude Code instances.
+# Each agent reads this to understand what happened before, and
+# writes their learnings for future agents.
+#
+# FORMAT:
+#   [timestamp] MESSAGE
+#
+# This file is automatically appended by agents during execution.
+# You can also add manual notes here.
+#
+# ============================================================================
+

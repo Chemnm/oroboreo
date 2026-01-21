@@ -1,0 +1,358 @@
+#!/usr/bin/env node
+/**
+ * OREO-FEEDBACK - The Architect Agent (PRD Generator)
+ *
+ * This script bridges human feedback to the autonomous loop. When you find
+ * issues during manual testing, describe them in human-feedback.md and run
+ * this script. It spawns Opus (the architect) to:
+ *
+ *   1. ANALYZE your feedback
+ *   2. REVIEW the latest archive for context
+ *   3. UPDATE cookie-crumbs.md with new fix tasks
+ *
+ * The architect DOES NOT fix code - it only writes tasks for oreo-run.js
+ * to execute.
+ *
+ * ============================================================================
+ * FILE REFERENCES (Oreo Theme)
+ * ============================================================================
+ *
+ * | File               | Purpose                                            |
+ * |--------------------|---------------------------------------------------|
+ * | human-feedback.md  | YOUR INPUT - describe issues here                 |
+ * | cookie-crumbs.md   | Task list - architect appends new tasks here      |
+ * | creme-filling.md   | System rules - architect reads these              |
+ * | archives/          | Historical sessions - architect reviews latest    |
+ * | bedrock-costs.json | Cost tracking - architect costs logged here       |
+ *
+ * ============================================================================
+ * USAGE
+ * ============================================================================
+ *
+ *   # Option 1: Write feedback to human-feedback.md first
+ *   node oroboreo/utils/oreo-feedback.js
+ *
+ *   # Option 2: Pass feedback as argument
+ *   node oroboreo/utils/oreo-feedback.js "The login button doesn't work"
+ *
+ * ============================================================================
+ * WORKFLOW
+ * ============================================================================
+ *
+ *   1. You test the app manually
+ *   2. You find issues
+ *   3. You write issues in human-feedback.md (or pass as arg)
+ *   4. Run: node oroboreo/utils/oreo-feedback.js
+ *   5. Architect (Opus) analyzes and creates tasks
+ *   6. Run: node oroboreo/utils/oreo-run.js to execute fixes
+ *
+ * @author Oroboreo- The Golden Loop
+ * @version 1.0.0
+ */
+
+const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const { MODELS, getPaths, COST_FACTORS } = require('./oreo-config.js');
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+const CONFIG = {
+  // Opus Model (The Architect) - from shared config
+  model: MODELS.OPUS,
+
+  // Token limits
+  maxOutputTokens: String(MODELS.OPUS.maxOutput),
+  thinkingBudget: String(MODELS.OPUS.maxThinking),
+
+  // File Paths (Oreo Theme)
+  paths: {
+    ...getPaths(__dirname),                                // Shared paths
+    feedback: path.join(__dirname, 'human-feedback.md'),   // Human input
+    prompt: path.join(__dirname, '.architect-prompt.txt')  // Temp prompt
+  }
+};
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
+function loadEnv() {
+  // Check multiple locations for .env file (like oreo-run.js)
+  const locations = [
+    path.join(__dirname, '.env'),
+    path.join(__dirname, 'bedrock', '.env')
+  ];
+
+  for (const envFile of locations) {
+    if (fs.existsSync(envFile)) {
+      const content = fs.readFileSync(envFile, 'utf8');
+      content.split('\n').forEach(line => {
+        const [key, ...value] = line.split('=');
+        if (key && value.length > 0) {
+          process.env[key.trim()] = value.join('=').trim();
+        }
+      });
+      return true;
+    }
+  }
+  return false;
+}
+
+function logArchitectCost(promptSize, responseSize) {
+  // Agentic sessions involve many turns of tool usage (reading files, searching)
+  // which aren't captured in the final output buffer. Apply multipliers.
+  const inputTokens = Math.ceil((promptSize / 4) * COST_FACTORS.ARCHITECT.TOOL_USE_FACTOR) + COST_FACTORS.ARCHITECT.BASELINE_CONTEXT_TOKENS;
+  const outputTokens = Math.ceil((responseSize / 4) * COST_FACTORS.ARCHITECT.OUTPUT_MULTIPLIER);
+
+  const inputCost = (inputTokens * CONFIG.model.inputCost) / 1000000;
+  const outputCost = (outputTokens * CONFIG.model.outputCost) / 1000000;
+  const totalCost = inputCost + outputCost;
+
+  let costLog = { session: { totalCost: 0 }, tasks: [] };
+  if (fs.existsSync(CONFIG.paths.costs)) {
+    try {
+      costLog = JSON.parse(fs.readFileSync(CONFIG.paths.costs, 'utf8'));
+    } catch (e) {}
+  }
+
+  costLog.tasks.push({
+    taskId: 'ARCHITECT',
+    taskTitle: 'Architect Feedback Analysis',
+    timestamp: new Date().toISOString(),
+    model: CONFIG.model.name,
+    inputTokens,
+    outputTokens,
+    totalCostUSD: totalCost
+  });
+
+  costLog.session.totalCost = (costLog.session.totalCost || 0) + totalCost;
+  fs.writeFileSync(CONFIG.paths.costs, JSON.stringify(costLog, null, 2));
+
+  console.log(`\n💰 Architect Cost: $${totalCost.toFixed(4)}`);
+  console.log(`   (Estimated: ${inputTokens} input, ${outputTokens} output tokens)`);
+  console.log(`💡 Note: Architect sessions include hidden costs for codebase analysis.`);
+}
+
+function getLatestArchive() {
+  if (!fs.existsSync(CONFIG.paths.archives)) return null;
+
+  const dirs = fs.readdirSync(CONFIG.paths.archives)
+    .map(name => ({ name, path: path.join(CONFIG.paths.archives, name) }))
+    .filter(item => {
+      try {
+        return fs.lstatSync(item.path).isDirectory();
+      } catch (e) {
+        return false;
+      }
+    })
+    .sort((a, b) => b.name.localeCompare(a.name)); // Sort by name (timestamp) descending
+
+  return dirs.length > 0 ? dirs[0] : null;
+}
+
+// ============================================================================
+// MAIN
+// ============================================================================
+
+async function main() {
+  console.log('');
+  console.log('===============================================================================');
+  console.log('OROBOREO ARCHITECT - Feedback to Tasks');
+  console.log('===============================================================================');
+  console.log('');
+
+  // Load environment
+  if (!loadEnv()) {
+    console.log('⚠️  No .env file found in oroboreo directory');
+  }
+
+  // Validate AWS credentials
+  if (!process.env.AWS_ACCESS_KEY_ID) {
+    console.error('❌ AWS_ACCESS_KEY_ID not set! Please configure oroboreo/.env');
+    process.exit(1);
+  }
+
+  // Get feedback from argument or file
+  let feedback = process.argv[2];
+
+  if (!feedback && fs.existsSync(CONFIG.paths.feedback)) {
+    const content = fs.readFileSync(CONFIG.paths.feedback, 'utf8');
+
+    // Check if user actually pasted something (beyond template)
+    if (content.includes('[Paste your feedback here]') || content.length < 100) {
+      console.log('⚠️  human-feedback.md seems to contain only the template.');
+    } else {
+      console.log('📝 Reading feedback from human-feedback.md');
+      feedback = content;
+    }
+  }
+
+  if (!feedback) {
+    console.error('❌ No feedback found!');
+    console.error('');
+    console.error('Usage:');
+    console.error('  1. Write your feedback in oroboreo/human-feedback.md');
+    console.error('  2. Run: node oroboreo/utils/oreo-feedback.js');
+    console.error('');
+    console.error('Or pass feedback directly:');
+    console.error('  node oroboreo/utils/oreo-feedback.js "The login button is broken"');
+    process.exit(1);
+  }
+
+  // Find latest archive for context
+  const latestArchive = getLatestArchive();
+  if (latestArchive) {
+    console.log(`📁 Reference Archive: ${latestArchive.name}`);
+  } else {
+    console.log('📁 No previous archives found');
+  }
+
+  // Load project context from creme-filling.md
+  let projectContext = '';
+  if (fs.existsSync(CONFIG.paths.rules)) {
+    projectContext = fs.readFileSync(CONFIG.paths.rules, 'utf8');
+    console.log('📋 Loaded system rules from creme-filling.md');
+  } else {
+    console.log('⚠️  creme-filling.md not found - run oreo-init.js first');
+  }
+
+  // Construct architect prompt
+  const architectPrompt = `
+You are the **Lead Architect** for this project.
+
+**SYSTEM RULES (from creme-filling.md):**
+${projectContext || 'No system rules loaded.'}
+
+---
+
+A human tester has reported the following issues during manual testing:
+
+"""
+${feedback}
+"""
+
+**YOUR MISSION**
+
+1. **Analyze**: Use tools to explore the codebase and find the root cause.
+
+2. **Context**: ${latestArchive
+    ? `The latest session archive is at \`${latestArchive.path}\`. Check the cookie-crumbs.md (or PRD.md) and progress.txt there to see what was recently changed.`
+    : 'No previous archive found.'}
+
+3. **Update Tasks**: Append NEW tasks to \`oroboreo/cookie-crumbs.md\` to fix these issues.
+   - If cookie-crumbs.md is empty or missing, create a new one.
+   - Tag tasks as [SIMPLE], [COMPLEX], or [CRITICAL].
+   - Include a "🕵️ Human UI Verification" section at the end.
+
+**STRICT RULES**
+
+- **Do NOT fix the code yourself.**
+- Only update cookie-crumbs.md with instructions for the worker agents.
+- Focus on making the fix clear and actionable.
+- Identify exactly which files should be modified.
+- **CRITICAL:** Verification MUST use scripts/automation - Claude cannot open browsers or manually test UI
+
+**TASK FORMAT**
+
+Use this format for each task:
+
+\`\`\`markdown
+- [ ] **Task N: Title** [SIMPLE|COMPLEX|CRITICAL]
+  - **Objective:** What needs to be accomplished
+  - **Files:** List files to modify
+  - **Details:**
+    - Step 1
+    - Step 2
+  - **Verification:** How to verify it works (MUST use scripts, NOT manual browser testing)
+\`\`\`
+
+**VERIFICATION CONSTRAINTS**
+
+- Verification MUST use: test scripts, build commands, CLI tools, curl requests, or log inspection
+- Examples of GOOD verification: "Run \`npm test\`", "Execute \`node scripts/verify-fix.js\`", "Check logs show correct output"
+- Examples of BAD verification: "Open browser and check UI", "Manually test the button", "View the page"
+- All verification should be executable by Claude Code (no GUI access)
+
+**IMPORTANT**
+
+After adding tasks, include this section at the end:
+
+\`\`\`markdown
+## 🕵️ Human UI Verification
+
+After all tasks complete, the human should verify:
+- [ ] Issue 1 is fixed
+- [ ] Issue 2 is fixed
+- [ ] No regressions introduced
+\`\`\`
+`;
+
+  // Save prompt
+  fs.writeFileSync(CONFIG.paths.prompt, architectPrompt);
+
+  // Run Opus
+  const batFile = path.join(__dirname, 'run-with-prompt.bat');
+
+  const env = {
+    ...process.env,
+    CLAUDE_CODE_USE_BEDROCK: '1',
+    AWS_REGION: process.env.AWS_REGION || 'us-east-1',
+    ANTHROPIC_MODEL: CONFIG.model.id,
+    CLAUDE_CODE_MAX_OUTPUT_TOKENS: CONFIG.maxOutputTokens,
+    CLAUDE_CODE_MAX_THINKING_TOKENS: CONFIG.thinkingBudget,
+    FORCE_COLOR: '1'
+  };
+
+  console.log('🚀 Spawning Architect (Opus 4.5)...');
+  console.log('');
+
+  let outputBuffer = '';
+
+  const child = spawn(batFile, [CONFIG.paths.prompt], {
+    env,
+    cwd: CONFIG.paths.projectRoot,
+    shell: true,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  child.stdout.on('data', (data) => {
+    process.stdout.write(data);
+    outputBuffer += data.toString();
+  });
+
+  child.stderr.on('data', (data) => {
+    process.stderr.write(data);
+    outputBuffer += data.toString();
+  });
+
+  child.on('exit', (code) => {
+    if (code === 0) {
+      const promptContent = fs.readFileSync(CONFIG.paths.prompt, 'utf8');
+      logArchitectCost(promptContent.length, outputBuffer.length);
+
+      console.log('');
+      console.log('===============================================================================');
+      console.log('✅ Architect complete! Tasks added to cookie-crumbs.md');
+      console.log('===============================================================================');
+      console.log('');
+      console.log('Next step:');
+      console.log('  node oroboreo/utils/oreo-run.js');
+      console.log('');
+    } else {
+      console.error(`\n❌ Architect exited with code ${code}`);
+    }
+  });
+
+  child.on('error', (err) => {
+    console.error(`\n❌ Failed to spawn architect: ${err.message}`);
+    process.exit(1);
+  });
+}
+
+main().catch(e => {
+  console.error('Fatal Error:', e.message);
+  process.exit(1);
+});

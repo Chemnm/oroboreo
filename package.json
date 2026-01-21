@@ -1,0 +1,45 @@
+{
+  "name": "oroboreo",
+  "version": "1.0.0",
+  "description": "The Golden Loop - Self-improving, cost-optimized autonomous development engine",
+  "main": "utils/oreo-run.js",
+  "scripts": {
+    "install-to": "node utils/install.js",
+    "init": "node utils/oreo-init.js",
+    "generate": "node utils/oreo-generate.js",
+    "run": "node utils/oreo-run.js",
+    "costs": "node utils/oreo-costs.js",
+    "archive": "node utils/oreo-archive.js",
+    "feedback": "node utils/oreo-feedback.js"
+  },
+  "keywords": [
+    "ai",
+    "autonomous",
+    "development",
+    "claude",
+    "bedrock",
+    "aws",
+    "code-generation",
+    "automation"
+  ],
+  "author": "Chemnm",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.700.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.700.0"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/claude-code": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Chemnm/oroboreo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Chemnm/oroboreo/issues"
+  },
+  "homepage": "https://github.com/Chemnm/oroboreo#readme"
+}
