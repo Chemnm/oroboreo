@@ -1,0 +1,35 @@
+# Don't publish these to NPM
+
+# User-specific runtime files
+archives/
+.env
+cookie-crumbs.md
+creme-filling.md
+progress.txt
+human-feedback.md
+costs.json
+new-prompt.md
+
+# Execution logs
+*.log
+oreo-execution.log
+
+# Prompt files
+.oreo-prompt.txt
+.generate-prompt.txt
+
+# Development files
+.claude/
+node_modules/
+.git/
+.gitignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo

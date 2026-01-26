@@ -110,8 +110,7 @@ function log(message, type = 'INFO') {
 function loadEnv() {
   // Check multiple locations for .env file (like ralph-loop.js)
   const locations = [
-    path.join(__dirname, '.env'),
-    path.join(__dirname, 'bedrock', '.env')
+    path.join(__dirname, '..', '.env')
   ];
 
   for (const envFile of locations) {

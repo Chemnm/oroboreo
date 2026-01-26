@@ -46,7 +46,7 @@ Oroboreo is a  meta-development system that combines Claude Code, AWS Bedrock, i
 
 **A Tool Built from Real Experience**
 
-I've spent 10 years building software across med-tech, logistics, research labs, and startups, from taking a no-code platform from beta to $2M ARR as its first engineer, to architecting cloud infrastructure and deploying AI systems on embedded devices. I've seen what works at scale.
+I've spent 10 years building software across med-tech, logistics, research labs, and startups, from taking a no-code platform (before AI was a thing) from beta to $2M ARR as its first engineer, to architecting cloud infrastructure and deploying AI systems on embedded devices. I've seen what works at scale.
 
 As AI rapidly evolved, I started building tools like this for my own projects and systems that don't just suggest code, but actually complete features autonomously and cost-effectively. Oroboreo is what emerged from that process.
 
@@ -115,16 +115,35 @@ Oroboreo is designed for cost-effective autonomous development:
 
 ---
 
+## 🚀 Installation
+
+### Option 1: NPM (Recommended)
+```bash
+# Install globally
+npm install -g @oroboreo/cli
+
+# Verify installation
+oreo-init --help
+```
+
+### Option 2: Clone Repository
+```bash
+# Clone and copy to your project
+git clone https://github.com/chemnm/oroboreo.git
+cp -r oroboreo/ your-project/oroboreo/
+```
+
+---
+
 ## 🍪 The Core Commands
 
 ### 🔧 Setup (One-Time)
 ```bash
-# 1. Copy oroboreo folder to your project
-cp -r oroboreo/ your-project/oroboreo/
+# Navigate to your project
+cd your-project
 
-# 2. Initialize Oroboreo(AI-powered or manual)
-cd your-project/oroboreo
-node oreo-init.js
+# Initialize Oroboreo (AI-powered or manual)
+oreo-init
 # - Discovers your project structure
 # - Creates creme-filling.md with Universal Laws
 # - Sets up .env for AWS Bedrock (optional AI analysis: ~$0.10-0.30)
@@ -135,10 +154,10 @@ node oreo-init.js
 #### Option A: Generate NEW Feature Tasks
 ```bash
 # Use Opus 4.5 to generate comprehensive task breakdown
-node oroboreo/utils/oreo-generate.js "Add user authentication with JWT"
+oreo-generate "Add user authentication with JWT"
 
 # OR: Create new-prompt.md with detailed feature description, then:
-node oroboreo/utils/oreo-generate.js
+oreo-generate
 # Script will ask if you want to use new-prompt.md
 # File is archived and cleared after generation
 ```
@@ -151,7 +170,7 @@ node oroboreo/utils/oreo-generate.js
 ```bash
 # 1. Write issues you found during testing in human-feedback.md
 # 2. Run the feedback architect
-node oroboreo/utils/oreo-feedback.js
+oreo-feedback
 ```
 - Opus analyzes your feedback + latest archive
 - Creates fix tasks in `cookie-crumbs.md`
@@ -163,7 +182,7 @@ node oroboreo/utils/oreo-feedback.js
 ### ▶️ Execute Tasks
 ```bash
 # Run the Golden Loop
-node oroboreo/utils/oreo-run.js
+oreo-run
 ```
 - Auto-loops through all tasks in `cookie-crumbs.md`
 - Smart model selection (Haiku for [SIMPLE], Sonnet for [COMPLEX])
@@ -174,13 +193,13 @@ node oroboreo/utils/oreo-run.js
 ### 📊 View Costs
 ```bash
 # Export cost data to CSV or compare with CloudWatch
-node oroboreo/utils/oreo-costs.js
+oreo-costs
 ```
 
 ### 🔍 Diagnose Issues
 ```bash
 # Post-mortem analysis for hung/failed tasks
-node oroboreo/utils/oreo-diagnose.js
+oreo-diagnose
 ```
 - Analyzes execution logs from archived sessions
 - Identifies timeout patterns and error causes
@@ -378,11 +397,11 @@ These rules are injected into every Claude Code instance, ensuring consistent be
 ### 📦 Distribution & Packaging
 
 **NPM Package Distribution**
-- [ ] Publish to NPM as `@oroboreo/cli`
-- [ ] Global installation: `npm install -g @oroboreo/cli`
+- [x] Publish to NPM as `@oroboreo/cli`
+- [x] Global installation: `npm install -g @oroboreo/cli`
 - [ ] NPX support: `npx @oroboreo init`, `npx @oroboreo run`
 - [ ] Auto-update notifications for new versions
-- [ ] Semantic versioning and changelog automation
+- [x] Semantic versioning and changelog automation
 
 **Why This Matters:** Eliminate manual folder copying, make installation one command, standardize updates.
 

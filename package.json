@@ -1,10 +1,18 @@
 {
-  "name": "oroboreo",
+  "name": "@oroboreo/cli",
   "version": "1.0.0",
   "description": "The Golden Loop - Self-improving, cost-optimized autonomous development engine",
   "main": "utils/oreo-run.js",
+  "bin": {
+    "oreo-init": "./utils/oreo-init.js",
+    "oreo-generate": "./utils/oreo-generate.js",
+    "oreo-feedback": "./utils/oreo-feedback.js",
+    "oreo-run": "./utils/oreo-run.js",
+    "oreo-archive": "./utils/oreo-archive.js",
+    "oreo-costs": "./utils/oreo-costs.js",
+    "oreo-diagnose": "./utils/oreo-diagnose.js"
+  },
   "scripts": {
-    "install-to": "node utils/install.js",
     "init": "node utils/oreo-init.js",
     "generate": "node utils/oreo-generate.js",
     "run": "node utils/oreo-run.js",
@@ -12,15 +20,30 @@
     "archive": "node utils/oreo-archive.js",
     "feedback": "node utils/oreo-feedback.js"
   },
+  "files": [
+    "utils/",
+    "tests/",
+    ".env.example",
+    "README.md",
+    "QUICKSTART.md",
+    "transparent_logo.svg",
+    "LICENSE"
+  ],
   "keywords": [
     "ai",
+    "claude",
     "autonomous",
     "development",
-    "claude",
+    "cost-optimization",
+    "automation",
+    "agent",
     "bedrock",
+    "anthropic",
+    "meta-development",
+    "self-improving",
+    "task-automation",
     "aws",
-    "code-generation",
-    "automation"
+    "code-generation"
   ],
   "author": "Chemnm",
   "license": "MIT",
@@ -32,7 +55,7 @@
     "@anthropic-ai/claude-code": "^1.0.0"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   },
   "repository": {
     "type": "git",
