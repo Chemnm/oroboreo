@@ -7,38 +7,88 @@ Get your first autonomous development session running in under 5 minutes.
 ## Prerequisites
 
 - Node.js 18+ installed
-- AWS Account with Bedrock access
 - Claude Code CLI: `npm install -g @anthropic-ai/claude-code`
+- **AI Provider** (choose one):
+  - Claude Pro/Team subscription (recommended for individuals), OR
+  - Anthropic API key with pay-as-you-go credits, OR
+  - AWS Account with Bedrock access (enterprise)
 - An existing project (or create a new one)
 
 ---
 
-## Step 1: Copy Oroboreoto Your Project (30 sec)
+## Step 1: Add Oroboreo to Your Project (30 sec)
 
+**⚠️ Important:** Don't nest git repositories! Choose one of these methods:
+
+### Option A: Copy Without Git History (Recommended)
 ```bash
-# Navigate to your project
-cd your-project/
+# Clone temporarily, then copy just the files
+git clone https://github.com/chemnm/oroboreo.git temp-oroboreo
+cp -r temp-oroboreo/* ./oroboreo/
+# Remove .git
+  # PowerShell (Windows)
+  Remove-Item -Recurse -Force oroboreo/.git
+  rm -rf temp-oroboreo  # Clean up
+  # Bash (macOS/Linux)
+  rm -rf oroboreo/.git
 
-# Clone or copy Oroboreos
-git clone https://github.com/yourusername/oroboreo.git
-
-# Or just copy the folder
-cp -r /path/to/oroboreo ./oroboreo
+# The oroboreo/ folder is now part of YOUR project's git repo
 ```
 
-**Result:** You now have `your-project/oroboreo/` folder.
+### Option B: Git Submodule (For tracking Oroboreo updates)
+```bash
+# Add as a submodule
+cd your-project/
+git submodule add https://github.com/chemnm/oroboreo.git oroboreo
+git submodule update --init --recursive
+```
+
+**Result:** You now have `your-project/oroboreo/` folder integrated into your project.
 
 ---
 
-## Step 2: Configure AWS Credentials (1 min)
+## Step 2: Configure AI Provider (1 min)
 
 ```bash
 cd oroboreo
 cp .env.example .env
 ```
 
-Edit `.env` with your AWS credentials:
+### Option A: Claude Code Subscription (Recommended for Individuals)
+
+**One-time login:**
+```bash
+npx @anthropic-ai/claude-code login
 ```
+
+**Edit `.env`:**
+```
+AI_PROVIDER=subscription
+# Leave ANTHROPIC_API_KEY blank
+```
+
+**Prerequisites:**
+- Active Claude Pro or Team subscription from [claude.ai](https://claude.ai/settings/billing)
+
+### Option B: Anthropic API (Pay-As-You-Go)
+
+**Edit `.env`:**
+```
+AI_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**How to get API key:**
+1. Go to https://console.anthropic.com/
+2. Sign in or create account
+3. Generate API key → Copy value
+4. Add credits at https://console.anthropic.com/settings/billing
+
+### Option C: AWS Bedrock (Enterprise)
+
+**Edit `.env`:**
+```
+AI_PROVIDER=bedrock
 AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 AWS_REGION=us-east-1
@@ -63,7 +113,7 @@ node oroboreo/utils/oreo-init.js
 - Creates empty `cookie-crumbs.md` task list
 - Optionally configures AWS credentials
 
-**Skip if:** You already have `creme-filling.md` and `cookie-crumbs.md`.
+**Skip if:** You already have detailed rules for your project to copy into `creme-filling.md`.
 
 ---
 
@@ -102,7 +152,7 @@ Edit `oroboreo/cookie-crumbs.md`:
 
 ---
 
-## Step 5: Run The Golden Loop (30-60 min)
+## Step 5: Run The Golden Loop
 
 ```bash
 node oroboreo/utils/oreo-run.js
@@ -189,8 +239,11 @@ node oroboreo/utils/oreo-costs.js cloudwatch
 | `creme-filling.md` | System rules (like AGENTS.md) |
 | `progress.txt` | Session memory |
 | `human-feedback.md` | Your issue reports |
-| `bedrock-costs.json` | Cost tracking |
+| `costs.json` | Cost tracking |
+| `tests/` | Session verification scripts (archived) |
+| `tests/reusable/` | Generic tests (kept across sessions) |
 | `utils/oreo-costs.js` | Export/compare costs |
+| `utils/oreo-diagnose.js` | Post-mortem analysis for hung tasks |
 
 ---
 

@@ -11,7 +11,7 @@
  *
  * | File                | Purpose                                           |
  * |---------------------|--------------------------------------------------|
- * | bedrock-costs.json  | Source data - tracked by oreo-run.js             |
+ * | costs.json  | Source data - tracked by oreo-run.js             |
  * | .env                | AWS credentials for CloudWatch access            |
  *
  * ============================================================================
@@ -47,7 +47,7 @@ const path = require('path');
 // ============================================================================
 
 const OROBOREO_DIR = path.join(__dirname, '..');
-const COSTS_FILE = path.join(OROBOREO_DIR, 'bedrock-costs.json');
+const COSTS_FILE = path.join(OROBOREO_DIR, 'costs.json');
 const ENV_FILE = path.join(OROBOREO_DIR, '.env');
 
 const colors = {
@@ -231,7 +231,7 @@ async function compareWithCloudWatch() {
   log('CloudWatch Metrics (Last Hour):\n', 'bright');
 
   const modelPricing = {
-    'opus': { input: 15.0, output: 75.0 },
+    'opus': { input: 5.0, output: 25.0 },
     'sonnet': { input: 3.0, output: 15.0 },
     'haiku': { input: 1.0, output: 5.0 }
   };

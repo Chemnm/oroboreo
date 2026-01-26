@@ -1,0 +1,224 @@
+You are initializing Oroboreofor the project "oroboreo".
+
+**PROJECT CONTEXT:**
+<p align="center">
+  <img src="transparent_logo.svg" alt="Oroboreo Logo" width="350"/>
+</p>
+
+# Oroboreo - The Golden Loop
+
+> **The self-improving, cost-optimized autonomous development engine that gets better with every iteration.**
+
+Oroboreo(oro = gold, ouroboros = the eternal loop) is a  meta-development system that combines Claude Code, AWS Bedrock, intelligent model routing, and self-learning capabilities into a single, autonomous workflow.
+
+---
+
+## What is Oroboreo?
+
+### 1. **Autonomous & Self-Sufficient**
+- ✅ Plans its own work (Opus 4.5 PRD generation)
+- ✅ Executes with optimal cost/power ratio (Sonnet/Haiku routing)
+- ✅ Commits progress automatically (Git integration)
+- ✅ Learns from past sessions (Archive analysis)
+- ✅ Self-improves over time (Feedback loop)
+
+### 2. **Cost-Optimized & Flexible**
+- Supports AWS Bedrock, Anthropic subscription OR Anthropic API (Claude Code)
+- Smart model routing: Simple tasks → Haiku ($1/$5), Complex → Sonnet ($3/$15)
+- Real cost tracking with CloudWatch integration (Bedrock only)
+- Typical feature: $1-3 vs $5-10 with competitors
+- Easy provider switching with single env variable
+
+### 3. **Production-Ready**
+- Full tool execution via Claude Code
+- Smart context management (no memory loss)
+- Retry logic with exponential backoff
+- Archive with year/month structure (archives/YYYY/MM/)
+- Git branching and auto-commits
+- Post-mortem diagnostics for hung tasks
+
+### 4. **Extensible & Template-Based**
+- Drop into any project in minutes
+- Intelligent initialization (discovers your codebase)
+- Language-agnostic (works with React, Node, Python, etc.)
+- Customizable Universal Laws (your project's rules)
+
+---
+
+## Why is Oroboreo?
+
+I have over 10 years of development experience and as AI has become more and more apart of my life I have been building this into my own projects and wanted to share with the world
+
+---
+
+
+## 🎯 The Five-Layer System
+
+```
+┌─────────────────────────────────────────┐
+│ Layer 1: PLANNING (Opus 4.5)            │
+│ ├─ Generate comprehensive PRDs          │
+│ ├─ Tag task complexity [SIMPLE/COMPLEX] │
+│ └─ Cost: $0.30-2 per PRD (one-time)     │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ Layer 2: ROUTING (Smart Selection)      │
+│ ├─ Parse PRD tasks                      │
+│ ├─ Select model based on complexity     │
+│ └─ Optimize cost vs. quality            │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ Layer 3: EXECUTION (Claude Code)        │
+│ ├─ Full tool access (Read/Write/Edit)   │
+│ ├─ Runs smartly (70% cost savings)      │
+│ └─ Smart context  (no amnesia)          │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ Layer 4: MEMORY (Persistent Learning)   │
+│ ├─ Archives completed sessions          │
+│ ├─ Extracts patterns and insights       │
+│ └─ Updates "AGENTS.md" automatically    │
+└─────────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────────┐
+│ Layer 5: FEEDBACK (Self-Improvement)    │
+│ ├─ Analyzes historical performance      │
+│ ├─ Recommends optimizations             │
+│ └─ Improves future PRDs                 │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## 💰 Cost Optimization
+
+Oroboreo is designed for cost-effective autonomous development:
+
+- **No subscription fees** - Pay only for AI compute you use
+- **Smart model routing** - Uses Opus ($5/$25 per 1M tokens) for high-level planning, Sonnet ($3/$15) for complex implementation, Haiku ($1/$5) for simple tasks
+- **Multiple provider options** - AWS Bedrock, Anthropic API, or (soon) Google Vertex AI
+- **Real-time cost tracking** - Monitor spending per task in `costs.json`
+- **Full autonomy** - Complete task loops with auto-retry, not just code suggestions
+- **Self-improving** - Archives + feedback loops make it better with every session
+
+**Typical costs**: $1-3 for a 12-task feature implementation
+
+*Example: User authentication feature with 12 tasks (4 simple + 8 complex) using smart routing typically costs $1-2 in API usage.*
+
+---
+
+## 🍪 The Core Commands
+
+### 🔧 Setup (One-Time)
+```bash
+# 1. Copy oroboreo folder to your project
+cp -r oroboreo/ your-project/oroboreo/
+
+# 2. Initialize Oroboreo(AI-powered or manual)
+cd your-project/oroboreo
+node oreo-init.js
+# - Discovers your project structure
+# - Creates creme-filling.md with Universal Laws
+# - Sets up .env for AWS Bedrock (optional AI analysis: ~$0.10-0.30)
+```
+
+### 📝 Create Tasks
+
+#### Option A: Generate NEW Feature Tasks
+```bash
+# Use Opus 4.5 to generate comprehensive task breakdown
+node oroboreo/utils/oreo-generate.js "Add user authentication with JWT"
+
+# OR: Create new-prompt.md with detailed feature description, then:
+node oroboreo/utils/oreo-generate.js
+# Script will ask if you want to use new-prompt.md
+# File is archived and cleared after generation
+```
+- Opus creates detailed tasks in `cookie-crumbs.md`
+- Tags tasks a
+
+**FILE STRUCTURE SUMMARY:**
+- Total Files: 29
+- Total Directories: 8
+- Key Files: package.json
+- Key Directories: .claude, archives, docs, examples, template, tests, tests\reusable, utils
+
+---
+
+## YOUR MISSION
+
+Analyze this project and create `oroboreo/creme-filling.md` with comprehensive system rules.
+
+### Steps
+
+1. **Explore the codebase** - Read key files like package.json, README.md, tsconfig.json, etc.
+2. **Identify frameworks and patterns** - What tech stack is used? What architectural patterns?
+3. **Discover constraints** - What rules should NEVER be violated?
+4. **Generate Universal Laws** - Create 5-10 specific rules for this project
+
+### Output Format
+
+Write directly to `oroboreo/creme-filling.md` with this structure:
+
+```markdown
+# Creme Filling - System Rules
+
+## Project: OROBOREO
+
+[2-3 sentence project description based on your analysis]
+
+---
+
+## Universal Laws (NEVER VIOLATE)
+
+1. **[Specific rule]** - Why this matters
+2. **[Specific rule]** - Why this matters
+... (5-10 rules)
+
+---
+
+## Technology Stack
+
+- **Framework:** [detected]
+- **Language:** [detected]
+- **Database:** [if any]
+- **Testing:** [if any]
+
+---
+
+## File Structure
+
+### Key Directories
+- `src/` - [purpose]
+- ...
+
+### Key Files
+- `package.json` - [relevant info]
+- ...
+
+---
+
+## Shared Memory (Learnings)
+
+### What Works Well
+- *(To be filled as you learn)*
+
+### Common Pitfalls
+- *(To be filled as you learn)*
+
+### Technical Notes
+- *(Environment-specific gotchas)*
+
+---
+
+*Generated by OroboreoAI Analysis*
+*Powered by Claude Sonnet 4.5*
+```
+
+**IMPORTANT:**
+- Be SPECIFIC to this project, not generic
+- Base rules on actual code you read
+- Focus on what could break the project if violated

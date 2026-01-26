@@ -18,8 +18,10 @@
  * | cookie-crumbs.md   | Task list (like PRD.md) - your feature breakdown  |
  * | creme-filling.md   | System rules (like AGENTS.md) - the law           |
  * | progress.txt       | Session memory - learnings between iterations     |
- * | bedrock-costs.json | Cost tracking - real-time spend monitoring        |
+ * | costs.json | Cost tracking - real-time spend monitoring        |
  * | human-feedback.md  | Input for oreo-feedback.js architect              |
+ * | tests/             | Session verification scripts (archived)            |
+ * | tests/reusable/    | Generic tests (kept across sessions)               |
  * | archives/          | Historical sessions for learning                  |
  *
  * ============================================================================
@@ -40,7 +42,7 @@
  * ============================================================================
  *
  *   - Smart Model Routing (Opus/Sonnet/Haiku based on task complexity)
- *   - Cost Tracking & Persistence (bedrock-costs.json)
+ *   - Cost Tracking & Persistence (costs.json)
  *   - Git Integration (auto-commit on task success)
  *   - Auto-retry with exponential backoff (5 attempts per task)
  *   - Session logging (oreo-execution.log)
@@ -52,7 +54,7 @@
 const { spawn, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { MODELS, getPaths, COST_FACTORS } = require('./oreo-config.js');
+const { getModelConfig, clearProviderEnv, getPaths, COST_FACTORS } = require('./oreo-config.js');
 
 // ============================================================================
 // CONFIGURATION
@@ -64,8 +66,14 @@ const CONFIG = {
   maxRetriesPerTask: 5,
   cooldownMs: 5000,
 
-  // Bedrock Models (from shared config)
-  models: MODELS,
+  // Timeout Configuration (configurable via environment variables)
+  taskTimeoutMs: parseInt(process.env.OREO_TASK_TIMEOUT_MS || '1800000'),    // 30 minutes default
+  gitTimeoutMs: parseInt(process.env.OREO_GIT_TIMEOUT_MS || '60000'),        // 1 minute default
+  heartbeatIntervalMs: parseInt(process.env.OREO_HEARTBEAT_MS || '60000'),   // 1 minute default
+  silentWarningMs: 5 * 60 * 1000,                                            // 5 minutes of silence triggers warning
+
+  // Models (will be set after loading env)
+  models: null,
 
   // File Paths (Oreo Theme)
   paths: {
@@ -157,6 +165,8 @@ function trackCost(task, model, promptText, responseText) {
     taskTitle: task.title,
     timestamp: new Date().toISOString(),
     model: model.name,
+    modelId: model.id,
+    provider: (process.env.AI_PROVIDER || 'subscription').toLowerCase(),
     inputTokens,
     outputTokens,
     totalCostUSD: totalCost
@@ -270,11 +280,23 @@ function setupGitBranch() {
     cleanupNulFile();
 
     // Commit any uncommitted changes first
-    execSync('git add .', { cwd: CONFIG.paths.projectRoot, stdio: 'ignore' });
-    const status = execSync('git status --porcelain', { cwd: CONFIG.paths.projectRoot }).toString();
+    log('Git: Checking for uncommitted changes...', 'GIT');
+    execSync('git add .', {
+      cwd: CONFIG.paths.projectRoot,
+      stdio: 'ignore',
+      timeout: CONFIG.gitTimeoutMs
+    });
+    const status = execSync('git status --porcelain', {
+      cwd: CONFIG.paths.projectRoot,
+      timeout: CONFIG.gitTimeoutMs
+    }).toString();
     if (status.trim()) {
       log('Committing pre-existing changes...', 'GIT');
-      execSync('git commit -m "pre-oreo session backup"', { cwd: CONFIG.paths.projectRoot, stdio: 'ignore' });
+      execSync('git commit -m "pre-oreo session backup"', {
+        cwd: CONFIG.paths.projectRoot,
+        stdio: 'ignore',
+        timeout: CONFIG.gitTimeoutMs
+      });
     }
 
     // Create and checkout new branch
@@ -283,32 +305,61 @@ function setupGitBranch() {
     const branchName = `oreo-${sessionName}-${timestamp}`;
 
     log(`Checking out new branch: ${branchName}`, 'GIT');
-    execSync(`git checkout -b "${branchName}"`, { cwd: CONFIG.paths.projectRoot, stdio: 'inherit' });
+    execSync(`git checkout -b "${branchName}"`, {
+      cwd: CONFIG.paths.projectRoot,
+      stdio: 'inherit',
+      timeout: CONFIG.gitTimeoutMs
+    });
 
     return branchName;
   } catch (e) {
-    log(`Git branch setup failed: ${e.message}`, 'WARN');
+    if (e.killed && e.signal === 'SIGTERM') {
+      log(`Git branch setup timeout after ${CONFIG.gitTimeoutMs / 1000}s`, 'ERROR');
+    } else {
+      log(`Git branch setup failed: ${e.message}`, 'WARN');
+    }
     return null;
   }
 }
 
 function gitCommit(task) {
   try {
+    log('Git: Starting commit operation...', 'GIT');
+
     // Windows: Clean up any 'nul' file before git operations
     cleanupNulFile();
 
-    execSync('git add .', { cwd: CONFIG.paths.projectRoot, stdio: 'inherit' });
-    const status = execSync('git status --porcelain', { cwd: CONFIG.paths.projectRoot }).toString();
+    log('Git: Adding files...', 'GIT');
+    execSync('git add .', {
+      cwd: CONFIG.paths.projectRoot,
+      stdio: 'inherit',
+      timeout: CONFIG.gitTimeoutMs
+    });
+
+    log('Git: Checking status...', 'GIT');
+    const status = execSync('git status --porcelain', {
+      cwd: CONFIG.paths.projectRoot,
+      timeout: CONFIG.gitTimeoutMs
+    }).toString();
 
     if (status.trim()) {
       const msg = `Oreo: Completed Task ${task.id} (${task.title})`;
-      execSync(`git commit -m "${msg}"`, { cwd: CONFIG.paths.projectRoot, stdio: 'inherit' });
+      log(`Git: Committing with message: "${msg}"`, 'GIT');
+      execSync(`git commit -m "${msg}"`, {
+        cwd: CONFIG.paths.projectRoot,
+        stdio: 'inherit',
+        timeout: CONFIG.gitTimeoutMs
+      });
       log(`Committed changes for Task ${task.id}`, 'GIT');
     } else {
       log('No changes to commit', 'GIT');
     }
   } catch (e) {
-    log(`Git commit failed: ${e.message}`, 'WARN');
+    if (e.killed && e.signal === 'SIGTERM') {
+      log(`Git operation timeout after ${CONFIG.gitTimeoutMs / 1000}s`, 'ERROR');
+    } else {
+      log(`Git commit failed: ${e.message}`, 'WARN');
+    }
   }
 }
 
@@ -354,6 +405,10 @@ EXECUTION RULES
 3. Update cookie-crumbs.md to mark task [x] when done.
 4. Log important findings to progress.txt.
 5. Do NOT create unnecessary files or over-engineer.
+6. **Check oroboreo/tests/reusable/** for existing verification scripts before creating new ones.
+7. **Create session-specific tests** in oroboreo/tests/ (will be archived after session).
+8. **Create reusable tests** in oroboreo/tests/reusable/ for generic functionality (persists).
+9. Tests MUST be executable scripts (Node.js, bash, curl) - NOT manual browser checks.
 `;
 }
 
@@ -368,21 +423,82 @@ async function main() {
   console.log('===============================================================================');
   console.log('');
 
+  // Graceful shutdown handling
+  let currentChildProcess = null;
+  let isShuttingDown = false;
+
+  function gracefulShutdown(signal) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
+    console.log(`\n\nReceived ${signal} - shutting down gracefully...`);
+    log(`Received ${signal} - attempting graceful shutdown`, 'WARN');
+
+    if (currentChildProcess && currentChildProcess.pid) {
+      log(`Killing child process (PID: ${currentChildProcess.pid})...`, 'WARN');
+      try {
+        process.kill(currentChildProcess.pid, 'SIGTERM');
+        setTimeout(() => {
+          try {
+            if (currentChildProcess && currentChildProcess.pid) {
+              log(`Force killing child process (PID: ${currentChildProcess.pid})`, 'ERROR');
+              process.kill(currentChildProcess.pid, 'SIGKILL');
+            }
+          } catch (e) {
+            // Process already dead
+          }
+        }, 5000);
+      } catch (e) {
+        log(`Failed to kill child process: ${e.message}`, 'ERROR');
+      }
+    }
+
+    log('Shutdown complete', 'INFO');
+    setTimeout(() => process.exit(1), 6000); // Give time for process cleanup
+  }
+
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
   // Load environment
   if (!loadEnv()) {
     log('No .env file found in oroboreo directory', 'WARN');
   }
 
-  // Validate AWS credentials
-  if (!process.env.AWS_ACCESS_KEY_ID) {
-    log('AWS_ACCESS_KEY_ID not set! Please configure oroboreo/.env', 'ERROR');
+  // Set up provider-aware models
+  const MODELS = getModelConfig();
+  CONFIG.models = MODELS;
+
+  // Configure provider-specific settings
+  const provider = (process.env.AI_PROVIDER || 'subscription').toLowerCase();
+  log(`AI Provider: ${provider}`);
+
+  if (provider === 'bedrock') {
+    // Validate AWS credentials
+    if (!process.env.AWS_ACCESS_KEY_ID) {
+      log('AWS_ACCESS_KEY_ID not set! Please configure oroboreo/.env', 'ERROR');
+      process.exit(1);
+    }
+
+    // Set Bedrock environment
+    process.env.CLAUDE_CODE_USE_BEDROCK = '1';
+    process.env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+    log(`AWS Region: ${process.env.AWS_REGION}`);
+  } else if (provider === 'anthropic') {
+    // Validate Anthropic API key
+    if (!process.env.ANTHROPIC_API_KEY) {
+      log('ANTHROPIC_API_KEY not set! Please configure oroboreo/.env', 'ERROR');
+      process.exit(1);
+    }
+    log('Using Anthropic API');
+  } else if (provider === 'subscription') {
+    // Claude Code Subscription - no validation needed
+    // User must have run: npx @anthropic-ai/claude-code login
+    log('Using Claude Code Subscription (ensure you have run: npx @anthropic-ai/claude-code login)');
+  } else {
+    log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, anthropic, subscription`, 'ERROR');
     process.exit(1);
   }
-
-  // Set Bedrock environment
-  process.env.CLAUDE_CODE_USE_BEDROCK = '1';
-  process.env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
-  log(`AWS Region: ${process.env.AWS_REGION}`);
 
   // Validate required files
   if (!fs.existsSync(CONFIG.paths.tasks)) {
@@ -459,55 +575,147 @@ async function main() {
     // 5. Execute Claude Code
     const batFile = path.join(__dirname, 'run-with-prompt.bat');
 
+    // Clear ALL provider environment variables first
+    clearProviderEnv();
+
+    const provider = (process.env.AI_PROVIDER || 'subscription').toLowerCase();
+
     const env = {
-      ...process.env,
-      CLAUDE_CODE_USE_BEDROCK: '1',
-      AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-      ANTHROPIC_MODEL: model.id,
+      ...process.env,  // Start fresh after clearProviderEnv()
       CLAUDE_CODE_MAX_OUTPUT_TOKENS: String(model.maxOutput || 20000),
       CLAUDE_CODE_MAX_THINKING_TOKENS: String(model.maxThinking || 0),
       FORCE_COLOR: '1'
     };
 
+    // Provider-specific configuration
+    if (provider === 'bedrock') {
+      // AWS Bedrock - Set Bedrock-specific vars
+      env.ANTHROPIC_MODEL = model.id;
+      env.CLAUDE_CODE_USE_BEDROCK = '1';
+      env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+      env.AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
+      env.AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+      log(`Using AWS Bedrock with model: ${model.id}`, 'INFO');
+
+    } else if (provider === 'anthropic') {
+      // Anthropic API - Set ONLY API key (no ANTHROPIC_MODEL)
+      env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+      log(`Using Anthropic API with model: ${model.id}`, 'INFO');
+
+    } else if (provider === 'subscription') {
+      // Claude Code Subscription - Set NO auth variables
+      // Claude Code will use logged-in claude.ai account
+      log(`Using Claude Subscription with model: ${model.id}`, 'INFO');
+
+    } else {
+      log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, anthropic, subscription`, 'ERROR');
+      process.exit(1);
+    }
+
     log('Spawning Claude Code agent...', 'INFO');
 
     try {
       let outputBuffer = '';
-      await new Promise((resolve, reject) => {
-        const child = spawn(batFile, [CONFIG.paths.prompt], {
+      let childProcess = null;
+
+      // Create timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Task execution timeout after ${CONFIG.taskTimeoutMs / 1000}s`));
+        }, CONFIG.taskTimeoutMs);
+      });
+
+      // Create execution promise with heartbeat monitoring
+      const executionPromise = new Promise((resolve, reject) => {
+        childProcess = spawn(batFile, [CONFIG.paths.prompt], {
           env,
           cwd: CONFIG.paths.projectRoot,
           shell: true,
           stdio: ['ignore', 'pipe', 'pipe']
         });
 
-        child.stdout.on('data', (data) => {
+        // Store reference for graceful shutdown
+        currentChildProcess = childProcess;
+
+        // Log PID for debugging
+        log(`Agent spawned (PID: ${childProcess.pid})`, 'INFO');
+
+        let lastOutputTime = Date.now();
+
+        // Heartbeat check - detect silent hangs
+        const heartbeatInterval = setInterval(() => {
+          const silentTime = Date.now() - lastOutputTime;
+          if (silentTime > CONFIG.silentWarningMs) {
+            log(`WARNING: No output from agent for ${Math.floor(silentTime / 1000)}s (PID: ${childProcess.pid})`, 'WARN');
+          } else {
+            log(`Agent still running (PID: ${childProcess.pid}, silent: ${Math.floor(silentTime / 1000)}s)`, 'INFO');
+          }
+        }, CONFIG.heartbeatIntervalMs);
+
+        childProcess.stdout.on('data', (data) => {
+          lastOutputTime = Date.now();
           const str = data.toString();
           process.stdout.write(str);
           outputBuffer += str;
           fs.appendFileSync(CONFIG.paths.log, str);
         });
 
-        child.stderr.on('data', (data) => {
+        childProcess.stderr.on('data', (data) => {
+          lastOutputTime = Date.now();
           const str = data.toString();
           process.stderr.write(str);
           outputBuffer += str;
           fs.appendFileSync(CONFIG.paths.log, str);
         });
 
-        child.on('exit', (code) => {
+        childProcess.on('exit', (code) => {
+          clearInterval(heartbeatInterval);
+          log(`Agent exited (PID: ${childProcess.pid}, code: ${code})`, 'INFO');
           if (code === 0) resolve();
           else reject(new Error(`Exit code ${code}`));
         });
 
-        child.on('error', reject);
+        childProcess.on('error', (err) => {
+          clearInterval(heartbeatInterval);
+          log(`Agent spawn error (PID: ${childProcess.pid}): ${err.message}`, 'ERROR');
+          reject(err);
+        });
       });
 
+      // Race between execution and timeout
+      await Promise.race([executionPromise, timeoutPromise]).catch((err) => {
+        if (err.message.includes('timeout')) {
+          log(`Agent timeout detected - attempting to kill process (PID: ${childProcess ? childProcess.pid : 'unknown'})`, 'ERROR');
+          if (childProcess && childProcess.pid) {
+            try {
+              process.kill(childProcess.pid, 'SIGTERM');
+              setTimeout(() => {
+                try {
+                  // Force kill if still alive after 5s
+                  process.kill(childProcess.pid, 'SIGKILL');
+                  log(`Force killed hung process (PID: ${childProcess.pid})`, 'ERROR');
+                } catch (killErr) {
+                  // Process already dead
+                }
+              }, 5000);
+            } catch (killErr) {
+              log(`Failed to kill hung process: ${killErr.message}`, 'ERROR');
+            }
+          }
+        }
+        throw err;
+      });
+
+      log('Agent completed successfully', 'INFO');
+
       // 6. Post-execution check
+      log('Post-execution: Checking task completion status...', 'INFO');
       const updatedTasks = parseTasks();
       const isComplete = updatedTasks.find(t => t.id === task.id)?.completed;
+      log(`Post-execution: Task ${task.id} completion status: ${isComplete ? 'COMPLETE' : 'INCOMPLETE'}`, 'INFO');
 
       // Track cost
+      log('Post-execution: Tracking cost...', 'INFO');
       trackCost(task, model, prompt, outputBuffer);
 
       if (isComplete) {
@@ -515,12 +723,16 @@ async function main() {
         delete taskAttempts[task.id];
 
         if (CONFIG.git.commitOnSuccess) {
+          log('Post-execution: Committing changes to git...', 'INFO');
           gitCommit(task);
+          log('Post-execution: Git commit complete', 'INFO');
         }
       } else {
         log(`Task ${task.id} not marked complete, retrying...`, 'WARN');
         taskAttempts[task.id] = attempts + 1;
       }
+
+      log(`Post-execution: Task ${task.id} cycle complete`, 'INFO');
 
     } catch (e) {
       log(`Execution failed: ${e.message}`, 'ERROR');

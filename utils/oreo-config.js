@@ -4,12 +4,13 @@ const path = require('path');
 // BEDROCK MODELS - Single Source of Truth
 // ============================================================================
 
+// Bedrock Model IDs (for AWS Bedrock)
 const MODELS = {
   OPUS: {
     id: 'us.anthropic.claude-opus-4-5-20251101-v1:0',
     name: 'Claude Opus 4.5',
-    inputCost: 15.0,
-    outputCost: 75.0,
+    inputCost: 5.0,
+    outputCost: 25.0,
     maxOutput: 100000,
     maxThinking: 32000
   },
@@ -31,6 +32,71 @@ const MODELS = {
   }
 };
 
+// Anthropic API Model IDs (for direct Claude API)
+// Using simple aliases as documented in https://code.claude.com/docs/en/model-config.md
+// These aliases automatically resolve to the latest model
+const ANTHROPIC_MODELS = {
+  OPUS: {
+    id: 'opus-4-5',
+    name: 'Claude Opus 4.5',
+    inputCost: 5.0,
+    outputCost: 25.0,
+    maxOutput: 100000,
+    maxThinking: 32000
+  },
+  SONNET: {
+    id: 'sonnet-4-5',
+    name: 'Claude Sonnet 4.5',
+    inputCost: 3.0,
+    outputCost: 15.0,
+    maxOutput: 20000,
+    maxThinking: 0
+  },
+  HAIKU: {
+    id: 'haiku-4-5',
+    name: 'Claude Haiku 4.5',
+    inputCost: 1.0,
+    outputCost: 5.0,
+    maxOutput: 8192,
+    maxThinking: 0
+  }
+};
+
+// ============================================================================
+// PROVIDER-AWARE MODEL CONFIGURATION
+// ============================================================================
+
+/**
+ * Clears all provider-specific environment variables
+ * This prevents conflicts when switching between providers
+ * Works cross-platform (Windows, macOS, Linux)
+ */
+function clearProviderEnv() {
+  // AWS Bedrock variables
+  delete process.env.CLAUDE_CODE_USE_BEDROCK;
+  delete process.env.AWS_ACCESS_KEY_ID;
+  delete process.env.AWS_SECRET_ACCESS_KEY;
+  delete process.env.AWS_REGION;
+
+  // Anthropic API variables
+  delete process.env.ANTHROPIC_API_KEY;
+
+  // Shared variables that can cause conflicts
+  delete process.env.ANTHROPIC_MODEL;
+}
+
+/**
+ * Returns the appropriate model configuration based on AI_PROVIDER env var
+ * @returns {Object} MODELS object (Bedrock, Anthropic API, or Subscription)
+ */
+function getModelConfig() {
+  const provider = (process.env.AI_PROVIDER || 'subscription').toLowerCase();
+
+  // Both 'anthropic' and 'subscription' use the same model aliases
+  // The difference is in authentication (API key vs. claude.ai account)
+  return (provider === 'bedrock') ? MODELS : ANTHROPIC_MODELS;
+}
+
 // ============================================================================
 // COMMON PATHS
 // ============================================================================
@@ -39,7 +105,7 @@ function getPaths(baseDir) {
   return {
     tasks: path.join(baseDir, '..', 'cookie-crumbs.md'),
     rules: path.join(baseDir, '..', 'creme-filling.md'),
-    costs: path.join(baseDir, '..', 'bedrock-costs.json'),
+    costs: path.join(baseDir, '..', 'costs.json'),
     archives: path.join(baseDir, '..', 'archives'),
     projectRoot: path.join(baseDir, '..', '..')
   };
@@ -145,6 +211,9 @@ See \`oroboreo/archives/{archiveName}\` for full session logs.
 
 module.exports = {
   MODELS,
+  ANTHROPIC_MODELS,
+  getModelConfig,
+  clearProviderEnv,
   getPaths,
   COLORS,
   COST_FACTORS,

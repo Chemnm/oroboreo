@@ -6,14 +6,6 @@ yarn-error.log*
 
 # Environment variables
 .env
-bedrock/.env
-
-# Oroboreoruntime files
-scripts/progress.txt
-scripts/bedrock-costs.json
-scripts/bedrock-costs-*.csv
-scripts/PRD.md
-scripts/AGENTS.md
 
 # Archives (optional - comment out if you want to commit archives)
 scripts/archive/
@@ -36,3 +28,4 @@ logs/
 # Temporary files
 *.tmp
 .temp/
+nul

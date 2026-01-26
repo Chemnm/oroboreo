@@ -16,6 +16,8 @@
  * |--------------------|---------------------------------------------------|
  * | cookie-crumbs.md   | Task list - Opus writes new tasks here            |
  * | creme-filling.md   | System rules - Opus reads project context         |
+ * | tests/             | Session-specific verification scripts (archived)  |
+ * | tests/reusable/    | Generic tests reused across sessions               |
  * | archives/          | Previous sessions - archived before new PRD       |
  *
  * ============================================================================
@@ -27,6 +29,12 @@
  *
  *   # With feature description
  *   node oroboreo/utils/oreo-generate.js "Add user authentication with JWT"
+ *
+ *   # From file (new-prompt.md in orboreo/ directory)
+ *   # Create new-prompt.md with feature description, then run:
+ *   node oroboreo/utils/oreo-generate.js
+ *   # Script will ask if you want to use the file
+ *   # After generation, new-prompt.md is archived and cleared
  *
  * ============================================================================
  * DIFFERENCE FROM OREO-FEEDBACK.JS
@@ -43,7 +51,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { MODELS, getPaths, COLORS, COST_FACTORS } = require('./oreo-config.js');
+const { getModelConfig, clearProviderEnv, getPaths, COLORS, COST_FACTORS } = require('./oreo-config.js');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -55,9 +63,9 @@ const rl = readline.createInterface({
 // ============================================================================
 
 const CONFIG = {
-  model: MODELS.OPUS,
-  maxOutputTokens: String(MODELS.OPUS.maxOutput),
-  thinkingBudget: String(MODELS.OPUS.maxThinking),
+  model: null,  // Will be set after loading env
+  maxOutputTokens: null,
+  thinkingBudget: null,
   paths: {
     ...getPaths(__dirname),
     prompt: path.join(__dirname, '.generate-prompt.txt')
@@ -79,10 +87,11 @@ function question(prompt) {
 // ============================================================================
 
 function loadEnv() {
-  // Check multiple locations for .env file (like oreo-run.js)
+  // Check multiple locations for .env file
+  // __dirname is utils/, so go up one level to find oroboreo/.env
   const locations = [
-    path.join(__dirname, '.env'),
-    path.join(__dirname, 'bedrock', '.env')
+    path.join(__dirname, '..', '.env'),
+    path.join(__dirname, '..', 'bedrock', '.env')
   ];
 
   for (const envFile of locations) {
@@ -137,6 +146,13 @@ function archiveExistingTasks() {
     fs.copyFileSync(progressPath, path.join(archivePath, 'progress.txt'));
   }
 
+  // Also copy new-prompt.md if it exists
+  const newPromptPath = path.join(CONFIG.paths.projectRoot, 'new-prompt.md');
+  if (fs.existsSync(newPromptPath)) {
+    fs.copyFileSync(newPromptPath, path.join(archivePath, 'new-prompt.md'));
+    log('Archived new-prompt.md', 'green');
+  }
+
   log(`Archived existing tasks to: archives/${timestamp}_pre-generate/`, 'green');
   return archivePath;
 }
@@ -161,6 +177,8 @@ function logOpusCost(promptSize, responseSize) {
     taskTitle: 'Generate New Feature Tasks',
     timestamp: new Date().toISOString(),
     model: CONFIG.model.name,
+    modelId: CONFIG.model.id,
+    provider: (process.env.AI_PROVIDER || 'subscription').toLowerCase(),
     inputTokens,
     outputTokens,
     totalCostUSD: totalCost
@@ -187,17 +205,41 @@ ${context || 'No project context available.'}
 
 ---
 
-## YOUR MISSION
+## PHASE 1: DISCOVERY (Explore First)
+
+**IMPORTANT: Before writing any tasks, you MUST explore the codebase.**
+
+- You have access to tools (\`read_file\`, \`list_files\`, \`grep\`, etc.).
+- USE THEM NOW to explore the codebase.
+- Find the relevant files (e.g., if updating UI, find where components are defined; if updating API, find existing endpoints).
+- Understand the *current state* before planning changes.
+- **Do not write code changes yet.** Just gather intelligence.
+
+Once you understand the scope, proceed to Phase 2.
+
+---
+
+## PHASE 2: PLANNING (Write the PRD)
 
 Create a detailed task list and write it to \`oroboreo/cookie-crumbs.md\`.
 
 ### Requirements
 
-1. **Title & Overview**
+1. **Session Header**
+   Start the file with this exact format:
+   \`\`\`markdown
+   **Session**: descriptive-feature-name
+   **Created**: ${new Date().toISOString().slice(0, 16).replace('T', ' ')}
+   **Status**: Ready for execution
+   \`\`\`
+   - Session name should be descriptive but NOT include dates/timestamps
+   - Examples: "add-user-authentication", "redesign-dashboard", "optimize-queries"
+
+2. **Title & Overview**
    - Clear, concise title for the feature
    - 2-3 sentence summary
 
-2. **Task Breakdown (8-15 tasks)**
+3. **Task Breakdown (8-15 tasks)**
    Each task must follow this EXACT format:
 
    \`\`\`markdown
@@ -210,12 +252,19 @@ Create a detailed task list and write it to \`oroboreo/cookie-crumbs.md\`.
      - **Verification:** How to verify it works (MUST use scripts, NOT manual browser testing)
    \`\`\`
 
-3. **Complexity Tags**
+4. **Complexity Tags**
    - **[SIMPLE]** = Straightforward (Haiku $1/$5) - UI updates, docs, simple fixes
    - **[COMPLEX]** = Requires thinking (Sonnet $3/$15) - API, database, architecture
    - **[CRITICAL]** = Mission-critical (Sonnet $3/$15) - Security, migrations
 
-4. **Human UI Verification Section**
+5. **Test Organization**
+   - **Check \`oroboreo/tests/reusable/\` first** for existing verification scripts
+   - **Reusable tests** (\`oroboreo/tests/reusable/\`): Generic, no hard-coded IDs, works across sessions
+     - Examples: verify-auth.js, check-api-health.js, validate-db-schema.js
+   - **Session tests** (\`oroboreo/tests/\`): Feature-specific, will be archived after session
+     - Examples: verify-task-36-fix.js, test-dashboard-redesign.js
+
+6. **Human UI Verification Section**
    End with a checklist for manual verification that the HUMAN will perform after all tasks complete.
 
 ### Output Format
@@ -224,9 +273,14 @@ Write directly to \`oroboreo/cookie-crumbs.md\` using clear markdown.
 
 **CRITICAL CONSTRAINTS:**
 - **Verification MUST use scripts** - Claude cannot open browsers or manually test UI
-- Verification should use: test scripts, build commands, CLI tools, curl requests, or log inspection
-- Examples of GOOD verification: "Run \`npm test\`", "Execute \`node scripts/verify-auth.js\`", "Check logs show correct output"
+- **Check \`tests/reusable/\` before creating new tests** - Don't duplicate existing verification scripts
+- Verification should use: test scripts in tests/, build commands, CLI tools, curl requests, or log inspection
+- Examples of GOOD verification:
+  - "Run \`node oroboreo/tests/reusable/verify-auth.js\`" (reuse existing)
+  - "Execute \`node oroboreo/tests/verify-task-5-login.js\`" (new session-specific test)
+  - "Check logs show correct output"
 - Examples of BAD verification: "Open browser and check UI", "Manually test the button", "View the page"
+- Create **reusable tests** for generic functionality, **session tests** for feature-specific verification
 - Each task should be achievable in one focused session
 - If a task feels too large, break it into smaller sub-tasks
 - Be specific about which files to modify
@@ -248,9 +302,36 @@ async function main() {
     log('No .env file found', 'yellow');
   }
 
-  // Validate AWS credentials
-  if (!process.env.AWS_ACCESS_KEY_ID) {
-    log('AWS_ACCESS_KEY_ID not set! Please configure oroboreo/.env', 'yellow');
+  // Set up provider-aware models
+  const MODELS = getModelConfig();
+  CONFIG.model = MODELS.OPUS;
+  CONFIG.maxOutputTokens = String(MODELS.OPUS.maxOutput);
+  CONFIG.thinkingBudget = String(MODELS.OPUS.maxThinking);
+
+  // Configure provider-specific settings
+  const provider = (process.env.AI_PROVIDER || 'subscription').toLowerCase();
+  log(`AI Provider: ${provider}\n`);
+
+  if (provider === 'bedrock') {
+    // Validate AWS credentials
+    if (!process.env.AWS_ACCESS_KEY_ID) {
+      log('AWS_ACCESS_KEY_ID not set! Please configure oroboreo/.env', 'yellow');
+      process.exit(1);
+    }
+    process.env.CLAUDE_CODE_USE_BEDROCK = '1';
+    process.env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+  } else if (provider === 'anthropic') {
+    // Validate Anthropic API key
+    if (!process.env.ANTHROPIC_API_KEY) {
+      log('ANTHROPIC_API_KEY not set! Please configure oroboreo/.env', 'yellow');
+      process.exit(1);
+    }
+  } else if (provider === 'subscription') {
+    // Claude Code Subscription - no validation needed
+    // User must have run: npx @anthropic-ai/claude-code login
+    log('Using Claude Code Subscription (ensure you have run: npx @anthropic-ai/claude-code login)\n');
+  } else {
+    log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, anthropic, subscription`, 'yellow');
     process.exit(1);
   }
 
@@ -258,8 +339,24 @@ async function main() {
   let feature = process.argv[2];
 
   if (!feature) {
-    log('Describe the feature you want to build:\n', 'cyan');
-    feature = await question('> ');
+    // Check if new-prompt.md exists in project root
+    const newPromptPath = path.join(CONFIG.paths.projectRoot, 'oroboreo', 'new-prompt.md');
+
+    if (fs.existsSync(newPromptPath)) {
+      log('Found new-prompt.md in oroboreo/', 'green');
+      const useFile = await question('Use new-prompt.md for feature description? (y/n): ');
+
+      if (useFile.toLowerCase() === 'y' || useFile.toLowerCase() === 'yes') {
+        feature = fs.readFileSync(newPromptPath, 'utf8').trim();
+        log(`\nLoaded feature description from new-prompt.md (${feature.length} chars)`, 'cyan');
+      } else {
+        log('\nDescribe the feature you want to build:\n', 'cyan');
+        feature = await question('> ');
+      }
+    } else {
+      log('Describe the feature you want to build:\n', 'cyan');
+      feature = await question('> ');
+    }
   }
 
   if (!feature.trim()) {
@@ -293,15 +390,41 @@ async function main() {
 
   const batFile = path.join(__dirname, 'run-with-prompt.bat');
 
+  // Clear ALL provider environment variables first
+  clearProviderEnv();
+
   const env = {
-    ...process.env,
-    CLAUDE_CODE_USE_BEDROCK: '1',
-    AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-    ANTHROPIC_MODEL: CONFIG.model.id,
+    ...process.env,  // Start fresh after clearProviderEnv()
     CLAUDE_CODE_MAX_OUTPUT_TOKENS: CONFIG.maxOutputTokens,
     CLAUDE_CODE_MAX_THINKING_TOKENS: CONFIG.thinkingBudget,
     FORCE_COLOR: '1'
   };
+
+  // Provider-specific configuration
+  if (provider === 'bedrock') {
+    // AWS Bedrock - Set Bedrock-specific vars
+    env.ANTHROPIC_MODEL = CONFIG.model.id;
+    env.CLAUDE_CODE_USE_BEDROCK = '1';
+    env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+    env.AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
+    env.AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+    log('Spawning via Bedrock...\n');
+
+  } else if (provider === 'anthropic') {
+    // Anthropic API - Set ONLY API key (no ANTHROPIC_MODEL)
+    env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+    log('Spawning via Anthropic API...\n');
+
+  } else if (provider === 'subscription') {
+    // Claude Code Subscription - Set NO auth variables
+    // Claude Code will use logged-in claude.ai account
+    log('Spawning via Claude Subscription...\n');
+
+  } else {
+    log(`Invalid AI_PROVIDER: ${provider}`, 'yellow');
+    log('Valid options: bedrock, anthropic, subscription', 'yellow');
+    process.exit(1);
+  }
 
   let outputBuffer = '';
 
@@ -340,6 +463,14 @@ async function main() {
         log('===============================================================================\n', 'yellow');
         log(`Tasks Created: ${taskCount}`, 'green');
         log(`Location: oroboreo/cookie-crumbs.md`, 'cyan');
+
+        // Clear new-prompt.md if it was used (archived earlier)
+        const newPromptPath = path.join(CONFIG.paths.projectRoot, 'new-prompt.md');
+        if (fs.existsSync(newPromptPath)) {
+          fs.writeFileSync(newPromptPath, '');
+          log('Cleared new-prompt.md (archived in session folder)', 'cyan');
+        }
+
         log('\nNext step:', 'bright');
         log('  node oroboreo/utils/oreo-run.js\n', 'magenta');
       }

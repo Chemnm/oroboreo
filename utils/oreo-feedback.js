@@ -23,7 +23,7 @@
  * | cookie-crumbs.md   | Task list - architect appends new tasks here      |
  * | creme-filling.md   | System rules - architect reads these              |
  * | archives/          | Historical sessions - architect reviews latest    |
- * | bedrock-costs.json | Cost tracking - architect costs logged here       |
+ * | costs.json | Cost tracking - architect costs logged here       |
  *
  * ============================================================================
  * USAGE
@@ -53,25 +53,25 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { MODELS, getPaths, COST_FACTORS } = require('./oreo-config.js');
+const { getModelConfig, clearProviderEnv, getPaths, COST_FACTORS } = require('./oreo-config.js');
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
 const CONFIG = {
-  // Opus Model (The Architect) - from shared config
-  model: MODELS.OPUS,
+  // Opus Model (The Architect) - will be set after loading env
+  model: null,
 
   // Token limits
-  maxOutputTokens: String(MODELS.OPUS.maxOutput),
-  thinkingBudget: String(MODELS.OPUS.maxThinking),
+  maxOutputTokens: null,
+  thinkingBudget: null,
 
   // File Paths (Oreo Theme)
   paths: {
-    ...getPaths(__dirname),                                // Shared paths
-    feedback: path.join(__dirname, 'human-feedback.md'),   // Human input
-    prompt: path.join(__dirname, '.architect-prompt.txt')  // Temp prompt
+    ...getPaths(__dirname),                                      // Shared paths
+    feedback: path.join(__dirname, '..', 'human-feedback.md'),   // Human input
+    prompt: path.join(__dirname, '.architect-prompt.txt')        // Temp prompt
   }
 };
 
@@ -83,7 +83,7 @@ function loadEnv() {
   // Check multiple locations for .env file (like oreo-run.js)
   const locations = [
     path.join(__dirname, '.env'),
-    path.join(__dirname, 'bedrock', '.env')
+    path.join(__dirname, '..', '.env')
   ];
 
   for (const envFile of locations) {
@@ -123,6 +123,8 @@ function logArchitectCost(promptSize, responseSize) {
     taskTitle: 'Architect Feedback Analysis',
     timestamp: new Date().toISOString(),
     model: CONFIG.model.name,
+    modelId: CONFIG.model.id,
+    provider: (process.env.AI_PROVIDER || 'subscription').toLowerCase(),
     inputTokens,
     outputTokens,
     totalCostUSD: totalCost
@@ -139,18 +141,37 @@ function logArchitectCost(promptSize, responseSize) {
 function getLatestArchive() {
   if (!fs.existsSync(CONFIG.paths.archives)) return null;
 
-  const dirs = fs.readdirSync(CONFIG.paths.archives)
-    .map(name => ({ name, path: path.join(CONFIG.paths.archives, name) }))
-    .filter(item => {
-      try {
-        return fs.lstatSync(item.path).isDirectory();
-      } catch (e) {
-        return false;
-      }
-    })
-    .sort((a, b) => b.name.localeCompare(a.name)); // Sort by name (timestamp) descending
+  // Find all archives recursively in year/month structure
+  const allArchives = [];
 
-  return dirs.length > 0 ? dirs[0] : null;
+  function scanDirectory(dir) {
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          // Check if this looks like an archive (contains cookie-crumbs.md or progress.txt)
+          const hasArchiveFiles = fs.existsSync(path.join(fullPath, 'cookie-crumbs.md')) ||
+                                   fs.existsSync(path.join(fullPath, 'progress.txt'));
+          if (hasArchiveFiles) {
+            allArchives.push({ name: entry.name, path: fullPath });
+          } else {
+            // Recurse into subdirectories (year/month folders)
+            scanDirectory(fullPath);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  scanDirectory(CONFIG.paths.archives);
+
+  if (allArchives.length === 0) return null;
+
+  // Sort by name (which includes timestamp) descending
+  allArchives.sort((a, b) => b.name.localeCompare(a.name));
+
+  return allArchives[0];
 }
 
 // ============================================================================
@@ -169,9 +190,37 @@ async function main() {
     console.log('⚠️  No .env file found in oroboreo directory');
   }
 
-  // Validate AWS credentials
-  if (!process.env.AWS_ACCESS_KEY_ID) {
-    console.error('❌ AWS_ACCESS_KEY_ID not set! Please configure oroboreo/.env');
+  // Set up provider-aware models
+  const MODELS = getModelConfig();
+  CONFIG.model = MODELS.OPUS;
+  CONFIG.maxOutputTokens = String(MODELS.OPUS.maxOutput);
+  CONFIG.thinkingBudget = String(MODELS.OPUS.maxThinking);
+
+  // Configure provider-specific settings
+  const provider = (process.env.AI_PROVIDER || 'subscription').toLowerCase();
+  console.log(`🤖 AI Provider: ${provider}`);
+  console.log('');
+
+  if (provider === 'bedrock') {
+    // Validate AWS credentials
+    if (!process.env.AWS_ACCESS_KEY_ID) {
+      console.error('❌ AWS_ACCESS_KEY_ID not set! Please configure oroboreo/.env');
+      process.exit(1);
+    }
+    process.env.CLAUDE_CODE_USE_BEDROCK = '1';
+    process.env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+  } else if (provider === 'anthropic') {
+    // Validate Anthropic API key
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('❌ ANTHROPIC_API_KEY not set! Please configure oroboreo/.env');
+      process.exit(1);
+    }
+  } else if (provider === 'subscription') {
+    // Claude Code Subscription - no validation needed
+    // User must have run: npx @anthropic-ai/claude-code login
+    console.log('💡 Using Claude Code Subscription (ensure you have run: npx @anthropic-ai/claude-code login)');
+  } else {
+    console.error(`❌ Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, anthropic, subscription`);
     process.exit(1);
   }
 
@@ -243,7 +292,13 @@ ${feedback}
     : 'No previous archive found.'}
 
 3. **Update Tasks**: Append NEW tasks to \`oroboreo/cookie-crumbs.md\` to fix these issues.
-   - If cookie-crumbs.md is empty or missing, create a new one.
+   - If cookie-crumbs.md is empty or missing, create a new one with this header format:
+     \`\`\`markdown
+     **Session**: human-feedback-fixes
+     **Created**: ${new Date().toISOString().slice(0, 16).replace('T', ' ')}
+     **Status**: Ready for execution
+     \`\`\`
+   - Session name should be descriptive but NOT include dates/timestamps
    - Tag tasks as [SIMPLE], [COMPLEX], or [CRITICAL].
    - Include a "🕵️ Human UI Verification" section at the end.
 
@@ -296,17 +351,42 @@ After all tasks complete, the human should verify:
   // Run Opus
   const batFile = path.join(__dirname, 'run-with-prompt.bat');
 
+  // Clear ALL provider environment variables first
+  clearProviderEnv();
+
   const env = {
-    ...process.env,
-    CLAUDE_CODE_USE_BEDROCK: '1',
-    AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-    ANTHROPIC_MODEL: CONFIG.model.id,
+    ...process.env,  // Start fresh after clearProviderEnv()
     CLAUDE_CODE_MAX_OUTPUT_TOKENS: CONFIG.maxOutputTokens,
     CLAUDE_CODE_MAX_THINKING_TOKENS: CONFIG.thinkingBudget,
     FORCE_COLOR: '1'
   };
 
-  console.log('🚀 Spawning Architect (Opus 4.5)...');
+  // Provider-specific configuration
+  if (provider === 'bedrock') {
+    // AWS Bedrock - Set Bedrock-specific vars
+    env.ANTHROPIC_MODEL = CONFIG.model.id;
+    env.CLAUDE_CODE_USE_BEDROCK = '1';
+    env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+    env.AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
+    env.AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+    console.log(`🚀 Spawning Architect (Opus via Bedrock: ${CONFIG.model.id})...`);
+
+  } else if (provider === 'anthropic') {
+    // Anthropic API - Set ONLY API key (no ANTHROPIC_MODEL)
+    env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+    console.log(`🚀 Spawning Architect (Opus via Anthropic API: ${CONFIG.model.id})...`);
+
+  } else if (provider === 'subscription') {
+    // Claude Code Subscription - Set NO auth variables
+    // Claude Code will use logged-in claude.ai account
+    console.log(`🚀 Spawning Architect (Opus via Claude Subscription: ${CONFIG.model.id})...`);
+
+  } else {
+    console.error(`❌ Invalid AI_PROVIDER: ${provider}`);
+    console.error('Valid options: bedrock, anthropic, subscription');
+    process.exit(1);
+  }
+
   console.log('');
 
   let outputBuffer = '';

@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(copy \"C:\\\\dev\\\\oroboreo\\\\utils\\\\oreo-diagnose.js\" \"C:\\\\dev\\\\kal-kal\\\\oroboreo\\\\utils\\\\oreo-diagnose.js\")"
     ]
   }
 }

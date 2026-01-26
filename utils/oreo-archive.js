@@ -14,7 +14,7 @@
  * |--------------------|---------------------------------------------------|
  * | cookie-crumbs.md   | Task list - archived then reset to template       |
  * | progress.txt       | Session memory - archived then reset              |
- * | bedrock-costs.json | Cost tracking - archived then reset               |
+ * | costs.json | Cost tracking - archived then reset               |
  * | oreo-execution.log | Execution log - archived then cleared             |
  * | human-feedback.md  | Human feedback - archived then reset to template  |
  * | archives/          | Destination folder                                |
@@ -44,15 +44,16 @@ const { execSync } = require('child_process');
 // CONFIGURATION
 // ============================================================================
 
-const OROBOREO_DIR = __dirname;
+// __dirname is utils/, so go up one level to oroboreo/
+const OROBOREO_DIR = path.join(__dirname, '..');
 const ARCHIVE_DIR = path.join(OROBOREO_DIR, 'archives');
 const PROJECT_ROOT = path.join(OROBOREO_DIR, '..');
 
-// Files to archive
+// Files to archive (tests/ handled separately with smart archival)
 const FILES_TO_ARCHIVE = [
   'cookie-crumbs.md',
   'progress.txt',
-  'bedrock-costs.json',
+  'costs.json',
   'oreo-execution.log',
   'human-feedback.md'
 ];
@@ -89,19 +90,45 @@ function getSessionName() {
     const content = fs.readFileSync(tasksPath, 'utf8');
     const match = content.match(/\*\*Session\*\*:\s*(.+)/i);
     if (match && match[1]) {
-      return match[1].trim().replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase().substring(0, 30);
+      return match[1].trim().replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase().substring(0, 50);
     }
   }
   return 'session';
 }
 
+function getSessionCreatedDate() {
+  const tasksPath = path.join(OROBOREO_DIR, 'cookie-crumbs.md');
+  if (fs.existsSync(tasksPath)) {
+    const content = fs.readFileSync(tasksPath, 'utf8');
+    const match = content.match(/\*\*Created\*\*:\s*(.+)/i);
+    if (match && match[1]) {
+      try {
+        // Parse formats like "2026-01-24 18:09" or "2026-01-24"
+        const dateStr = match[1].trim();
+        return new Date(dateStr.replace(' ', 'T'));
+      } catch (e) {}
+    }
+  }
+  return new Date(); // Fallback to current date
+}
+
 function getArchivePath() {
-  const now = new Date();
-  const timestamp = now.toISOString().slice(0, 10); // YYYY-MM-DD
+  const sessionDate = getSessionCreatedDate();
   const sessionName = getSessionName();
 
-  const folderName = `${timestamp}_${sessionName}`;
-  const archivePath = path.join(ARCHIVE_DIR, folderName);
+  // Extract year, month, date, hour, minute from session creation date
+  const year = sessionDate.getFullYear();
+  const month = String(sessionDate.getMonth() + 1).padStart(2, '0');
+  const day = String(sessionDate.getDate()).padStart(2, '0');
+  const hour = String(sessionDate.getHours()).padStart(2, '0');
+  const minute = String(sessionDate.getMinutes()).padStart(2, '0');
+
+  // Folder name: sessionName-YYYY-MM-DD-HH-MM
+  const folderName = `${sessionName}-${year}-${month}-${day}-${hour}-${minute}`;
+
+  // Year/month subdirectory structure
+  const yearMonthDir = path.join(ARCHIVE_DIR, year.toString(), month);
+  const archivePath = path.join(yearMonthDir, folderName);
 
   // If folder exists, add a counter
   let finalPath = archivePath;
@@ -112,7 +139,7 @@ function getArchivePath() {
   }
 
   fs.mkdirSync(finalPath, { recursive: true });
-  return { archivePath: finalPath, timestamp, sessionName };
+  return { archivePath: finalPath, timestamp: `${year}-${month}-${day}`, sessionName };
 }
 
 function archiveSession() {
@@ -141,11 +168,23 @@ function archiveSession() {
     log(`\nArchived ${archivedCount} file(s) to:`, 'bright');
     log(`  ${path.relative(process.cwd(), archivePath)}`, 'cyan');
 
+    // Smart test archival
+    log('\n📝 Smart Test Archival:', 'bright');
+    const testStats = archiveTests(archivePath);
+
     // Create archive summary
     const summaryPath = path.join(archivePath, 'SUMMARY.md');
     const summary = generateArchiveSummary(archivePath, timestamp);
     fs.writeFileSync(summaryPath, summary, 'utf8');
     log(`  Created: SUMMARY.md`, 'cyan');
+
+    // Test summary
+    if (testStats.reusable > 0 || testStats.archived > 0) {
+      log(`\nTest Summary:`, 'bright');
+      log(`  Reusable tests: ${testStats.reusable}`, 'green');
+      log(`  Archived tests: ${testStats.archived}`, 'cyan');
+    }
+
     log('', 'reset');
   } else {
     log('\nNo files to archive!', 'yellow');
@@ -157,7 +196,7 @@ function archiveSession() {
 
 function generateArchiveSummary(archivePath, timestamp) {
   const tasksPath = path.join(archivePath, 'cookie-crumbs.md');
-  const costsPath = path.join(archivePath, 'bedrock-costs.json');
+  const costsPath = path.join(archivePath, 'costs.json');
 
   let summary = `# OroboreoSession Archive\n\n`;
   summary += `**Archived:** ${timestamp}\n\n`;
@@ -169,8 +208,9 @@ function generateArchiveSummary(archivePath, timestamp) {
     const sessionMatch = content.match(/\*\*Session\*\*:\s*(.+)/i);
     const session = sessionMatch ? sessionMatch[1] : 'Unknown';
 
-    const completedTasks = (content.match(/- \[x\]/gi) || []).length;
-    const totalTasks = (content.match(/- \[[ x]\]/gi) || []).length;
+    // Only count actual tasks (with **Task N:** format), not Human UI Verification checkboxes
+    const completedTasks = (content.match(/- \[x\] \*\*Task \d+:/gi) || []).length;
+    const totalTasks = (content.match(/- \[[ x]\] \*\*Task \d+:/gi) || []).length;
 
     summary += `## Session: ${session}\n\n`;
     summary += `**Tasks Completed:** ${completedTasks}/${totalTasks}\n\n`;
@@ -213,6 +253,135 @@ function generateArchiveSummary(archivePath, timestamp) {
   summary += `*Archived by Oroboreo- The Golden Loop*\n`;
 
   return summary;
+}
+
+// ============================================================================
+// SMART TEST ARCHIVAL
+// ============================================================================
+
+/**
+ * Determine if a test file is "reusable" based on filename and content heuristics
+ */
+function isTestReusable(filename, content) {
+  // Filename heuristics
+  const filenamePatterns = {
+    sessionSpecific: [
+      /task-?\d+/i,           // task-36, task36
+      /\d{4}-\d{2}-\d{2}/,    // dates
+      /session|fix-|bug-/i    // session-specific keywords
+    ],
+    genericPatterns: [
+      /^verify-[a-z]+\.js$/i,    // verify-auth.js
+      /^check-[a-z]+\.js$/i,     // check-api-health.js
+      /^validate-[a-z]+\.js$/i,  // validate-db-schema.js
+      /^test-[a-z]+-flow\.js$/i  // test-login-flow.js
+    ]
+  };
+
+  // Check if filename contains session-specific patterns
+  for (const pattern of filenamePatterns.sessionSpecific) {
+    if (pattern.test(filename)) {
+      return false; // Session-specific
+    }
+  }
+
+  // Check if filename matches generic patterns
+  for (const pattern of filenamePatterns.genericPatterns) {
+    if (pattern.test(filename)) {
+      // Additional content check for truly generic tests
+      if (content) {
+        const sessionSpecificStrings = [
+          /userId\s*=\s*\d+/,        // userId = 12345
+          /const\s+\w+Id\s*=\s*\d+/, // const testId = 123
+          /task\s*\d+/i,             // references to task numbers
+          /session|temporary|temp/i  // temporary test indicators
+        ];
+
+        for (const pattern of sessionSpecificStrings) {
+          if (pattern.test(content)) {
+            return false; // Has hard-coded data
+          }
+        }
+      }
+
+      return true; // Generic pattern + no hard-coded data = reusable
+    }
+  }
+
+  // Default: if unsure, treat as session-specific (safer)
+  return false;
+}
+
+/**
+ * Archive tests with smart reusable detection
+ */
+function archiveTests(archivePath) {
+  const testsDir = path.join(OROBOREO_DIR, 'tests');
+  const reusableDir = path.join(testsDir, 'reusable');
+  const archiveTestsDir = path.join(archivePath, 'tests');
+
+  if (!fs.existsSync(testsDir)) {
+    log('  No tests/ directory found', 'yellow');
+    return { reusable: 0, archived: 0 };
+  }
+
+  // Ensure reusable directory exists
+  if (!fs.existsSync(reusableDir)) {
+    fs.mkdirSync(reusableDir, { recursive: true });
+    log('  Created tests/reusable/ directory', 'cyan');
+  }
+
+  // Ensure archive tests directory exists
+  fs.mkdirSync(archiveTestsDir, { recursive: true });
+
+  let reusableCount = 0;
+  let archivedCount = 0;
+
+  // Get all test files in tests/ root (not in reusable/)
+  const testFiles = fs.readdirSync(testsDir)
+    .filter(file => {
+      const fullPath = path.join(testsDir, file);
+      return fs.statSync(fullPath).isFile() && file.endsWith('.js');
+    });
+
+  if (testFiles.length === 0) {
+    log('  No test files to archive', 'yellow');
+    return { reusable: 0, archived: 0 };
+  }
+
+  log(`\n  Analyzing ${testFiles.length} test file(s)...`, 'cyan');
+
+  testFiles.forEach(file => {
+    const sourcePath = path.join(testsDir, file);
+    const content = fs.readFileSync(sourcePath, 'utf8');
+
+    if (isTestReusable(file, content)) {
+      // This is a reusable test
+      const reusablePath = path.join(reusableDir, file);
+
+      if (!fs.existsSync(reusablePath)) {
+        fs.copyFileSync(sourcePath, reusablePath);
+        log(`  ✓ Reusable: ${file} → tests/reusable/`, 'green');
+        reusableCount++;
+      } else {
+        log(`  ○ Already reusable: ${file}`, 'yellow');
+      }
+
+      // Remove from tests/ root (now in reusable/)
+      fs.unlinkSync(sourcePath);
+    } else {
+      // This is a session-specific test
+      const archivePath = path.join(archiveTestsDir, file);
+      fs.copyFileSync(sourcePath, archivePath);
+      log(`  ✓ Archived: ${file} → archives/.../tests/`, 'cyan');
+      archivedCount++;
+
+      // Remove from tests/ root (now archived)
+      fs.unlinkSync(sourcePath);
+    }
+  });
+
+  return { reusable: reusableCount, archived: archivedCount };
 }
 
 // ============================================================================
@@ -361,7 +530,7 @@ ${sessionSummary}
   fs.writeFileSync(path.join(OROBOREO_DIR, 'progress.txt'), progressTemplate, 'utf8');
   log('  Reset: progress.txt', 'green');
 
-  // 4. Reset bedrock-costs.json
+  // 4. Reset costs.json
   const emptyCosts = {
     session: {
       startTime: timestamp,
@@ -369,8 +538,8 @@ ${sessionSummary}
     },
     tasks: []
   };
-  fs.writeFileSync(path.join(OROBOREO_DIR, 'bedrock-costs.json'), JSON.stringify(emptyCosts, null, 2), 'utf8');
-  log('  Reset: bedrock-costs.json', 'green');
+  fs.writeFileSync(path.join(OROBOREO_DIR, 'costs.json'), JSON.stringify(emptyCosts, null, 2), 'utf8');
+  log('  Reset: costs.json', 'green');
 
   // 5. Clear oreo-execution.log
   fs.writeFileSync(path.join(OROBOREO_DIR, 'oreo-execution.log'), '', 'utf8');
@@ -424,7 +593,7 @@ function gitCommitArchive(sessionName) {
       'oroboreo/cookie-crumbs.md',
       'oroboreo/progress.txt',
       'oroboreo/human-feedback.md',
-      'oroboreo/bedrock-costs.json',
+      'oroboreo/costs.json',
       'oroboreo/oreo-execution.log'
     ];
     filesToStage.forEach(file => {
@@ -479,7 +648,7 @@ function createPullRequest(sessionName, archivePath) {
   try {
     // Check if gh CLI is available
     try {
-      execSync('gh --version', { stdio: 'ignore', cwd: PROJECT_ROOT });
+      execSync('gh --version', { stdio: 'ignore' });
     } catch (e) {
       log('  ⚠️  GitHub CLI (gh) not installed. Skipping PR creation.', 'yellow');
       log('  Install: https://cli.github.com/', 'cyan');
@@ -488,7 +657,7 @@ function createPullRequest(sessionName, archivePath) {
 
     // Check if gh is authenticated
     try {
-      execSync('gh auth status', { stdio: 'ignore', cwd: PROJECT_ROOT });
+      execSync('gh auth status', { stdio: 'ignore' });
     } catch (e) {
       log('  ⚠️  GitHub CLI not authenticated. Run: gh auth login', 'yellow');
       return null;
