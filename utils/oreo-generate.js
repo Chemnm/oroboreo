@@ -91,7 +91,7 @@ function loadEnv() {
   // __dirname is utils/, so go up one level to find oroboreo/.env
   const locations = [
     path.join(__dirname, '..', '.env'),
-    path.join(__dirname, '..', 'bedrock', '.env')
+    path.join(__dirname, '.env')
   ];
 
   for (const envFile of locations) {

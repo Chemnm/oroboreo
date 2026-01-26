@@ -108,7 +108,6 @@ function log(message, type = 'INFO') {
 }
 
 function loadEnv() {
-  // Check multiple locations for .env file (like ralph-loop.js)
   const locations = [
     path.join(__dirname, '..', '.env')
   ];
