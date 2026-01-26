@@ -6,7 +6,7 @@
 
 > **The self-improving, cost-optimized autonomous development engine that gets better with every iteration.**
 
-Oroboreo(oro = gold, ouroboros = the eternal loop) is a  meta-development system that combines Claude Code, AWS Bedrock, intelligent model routing, and self-learning capabilities into a single, autonomous workflow.
+Oroboreo is a  meta-development system that combines Claude Code, AWS Bedrock, intelligent model routing, and self-learning capabilities into a single, autonomous workflow.
 
 ---
 
@@ -42,9 +42,17 @@ Oroboreo(oro = gold, ouroboros = the eternal loop) is a  meta-development system
 
 ---
 
-## Why is Oroboreo?
+## Why Oroboreo?
 
-I have over 10 years of development experience and as AI has become more and more apart of my life I have been building this into my own projects and wanted to share with the world
+**A Tool Built from Real Experience**
+
+I've spent 10 years building software across med-tech, logistics, research labs, and startups, from taking a no-code platform from beta to $2M ARR as its first engineer, to architecting cloud infrastructure and deploying AI systems on embedded devices. I've seen what works at scale.
+
+As AI rapidly evolved, I started building tools like this for my own projects and systems that don't just suggest code, but actually complete features autonomously and cost-effectively. Oroboreo is what emerged from that process.
+
+I know there are many similar tools out there. But this is what helps **me** ship faster without breaking the bank or losing context across sessions, and if it helps you too, that's why I'm sharing it.
+
+This isn't about replacing developers. It's about giving devs & builders leverage to focus on architecture and decision-making while the tedious implementation loop runs itself.
 
 ---
 
@@ -504,15 +512,6 @@ The current version is built on [Claude Code](https://code.claude.com), which is
 
 ---
 
-### 💡 Have Ideas?
-
-Suggest features:
-- [Open a discussion](https://github.com/chemnm/oroboreo/discussions)
-- [Vote on existing proposals](https://github.com/chemnm/oroboreo/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement)
-
-
----
-
 ## 🤝 Contributing
 
 Obsess over building the future of autonomous development! Contributions welcome:
@@ -533,11 +532,11 @@ MIT License - Use freely, commercially or personally.
 
 ## 🙏 Acknowledgments
 
-- **Anthropic** for Claude Code and Bedrock integration
-- **AWS** for cost-effective model access
+- **Anthropic** for Claude Code integration
+- **AWS** for bedrock and easy enterprise level model access
 - **The Ouroboros** (the eternal snake) for inspiration 🐍
 - **The Ralph Wiggum Loop**  AI Loop Technique for Claude Code 🔁
-- **Oreo**  My favorite dessert and play on words to combine 🍪
+- **Oreo**  Yum 🍪
 - **Oro**  GOLD 🪙
 
 ---
