@@ -108,8 +108,10 @@ function log(message, type = 'INFO') {
 }
 
 function loadEnv() {
+  // Check multiple locations for .env file (like ralph-loop.js)
   const locations = [
-    path.join(__dirname, '..', '.env')
+    path.join(__dirname, '..', '.env'),
+    path.join(__dirname, '.env')
   ];
 
   for (const envFile of locations) {
@@ -271,11 +273,148 @@ function getSessionName() {
   return 'oreo-session';
 }
 
+/**
+ * Check if current session has incomplete tasks
+ * Returns true if should resume, false if should start new session
+ */
+function checkSessionIncomplete() {
+  try {
+    const cookieCrumbsPath = path.join(CONFIG.paths.projectRoot, 'oroboreo', 'cookie-crumbs.md');
+
+    if (!fs.existsSync(cookieCrumbsPath)) {
+      log('cookie-crumbs.md not found - assuming new session', 'WARN');
+      return false;
+    }
+
+    const content = fs.readFileSync(cookieCrumbsPath, 'utf-8');
+
+    // Check 1: Look for REAL tasks with numbers (not template placeholder "Task N:")
+    // Real tasks: **Task 1:**, **Task 2:**, etc.
+    // Template: **Task N:** (literal "N")
+    const realTasks = content.match(/\*\*Task \d+:/g);
+
+    if (!realTasks || realTasks.length === 0) {
+      log('No numbered tasks found - appears to be template', 'INFO');
+      return false;
+    }
+
+    // Check 2: Look for incomplete numbered tasks
+    // Match pattern: - [ ] **Task N:** (with actual number, not "N")
+    const incompleteTasks = content.match(/- \[ \] \*\*Task \d+:/g);
+
+    if (incompleteTasks && incompleteTasks.length > 0) {
+      log(`Found ${incompleteTasks.length} incomplete task(s) in cookie-crumbs.md`, 'INFO');
+      return true;
+    }
+
+    // Check 3: If all tasks are complete [x], check if there are recent commits on this branch
+    // This handles the case where session completed but wasn't archived yet
+    try {
+      const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+        cwd: CONFIG.paths.projectRoot,
+        timeout: CONFIG.gitTimeoutMs
+      }).toString().trim();
+
+      // Check if branch has commits beyond main
+      const commitCount = execSync(`git rev-list --count ${currentBranch} --not main`, {
+        cwd: CONFIG.paths.projectRoot,
+        timeout: CONFIG.gitTimeoutMs
+      }).toString().trim();
+
+      if (parseInt(commitCount) > 0) {
+        log(`Branch has ${commitCount} commits beyond main - session appears complete but not archived`, 'INFO');
+        return false; // Session is complete, start new one
+      }
+    } catch (gitError) {
+      log(`Could not check git commits: ${gitError.message}`, 'WARN');
+    }
+
+    log('All tasks in cookie-crumbs.md appear complete', 'INFO');
+    return false;
+
+  } catch (e) {
+    log(`Error checking session status: ${e.message}`, 'WARN');
+    // If we can't determine, err on side of caution - assume resuming
+    return true;
+  }
+}
+
 function setupGitBranch() {
   log('Setting up Git environment...', 'GIT');
   try {
     // Windows: Clean up any 'nul' file before git operations
     cleanupNulFile();
+
+    // NEW: Check current branch and ensure we're on main
+    log('Git: Checking current branch...', 'GIT');
+    const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd: CONFIG.paths.projectRoot,
+      timeout: CONFIG.gitTimeoutMs
+    }).toString().trim();
+
+    log(`Currently on branch: ${currentBranch}`, 'GIT');
+
+    // NEW: Check if resuming existing session
+    if (currentBranch.startsWith('oreo-')) {
+      log('Detected existing Oreo session branch', 'INFO');
+
+      // Check if session has incomplete tasks
+      const hasIncompleteTasks = checkSessionIncomplete();
+
+      if (hasIncompleteTasks) {
+        log('Resuming existing session on branch: ' + currentBranch, 'SUCCESS');
+        log('Skipping branch creation - continuing from where you left off', 'INFO');
+        return currentBranch; // CRITICAL: Return early, don't create new branch
+      } else {
+        log('Previous session appears complete, starting new session', 'INFO');
+        // Fall through to main branch logic below
+      }
+    }
+
+    // NEW: If not on main, switch to main (commit changes first if needed)
+    if (currentBranch !== 'main') {
+      log('WARNING: Not on main branch. Switching to main for session start...', 'WARN');
+
+      // Check for uncommitted changes on current branch
+      const currentStatus = execSync('git status --porcelain', {
+        cwd: CONFIG.paths.projectRoot,
+        timeout: CONFIG.gitTimeoutMs
+      }).toString().trim();
+
+      if (currentStatus) {
+        log('Committing changes on current branch before switching...', 'GIT');
+        execSync('git add .', {
+          cwd: CONFIG.paths.projectRoot,
+          stdio: 'ignore',
+          timeout: CONFIG.gitTimeoutMs
+        });
+        execSync('git commit -m "pre-oreo session backup"', {
+          cwd: CONFIG.paths.projectRoot,
+          stdio: 'ignore',
+          timeout: CONFIG.gitTimeoutMs
+        });
+      }
+
+      log('Switching to main branch...', 'GIT');
+      execSync('git checkout main', {
+        cwd: CONFIG.paths.projectRoot,
+        stdio: 'inherit',
+        timeout: CONFIG.gitTimeoutMs
+      });
+    }
+
+    // NEW: Pull latest changes from origin/main
+    log('Git: Pulling latest changes from origin/main...', 'GIT');
+    try {
+      execSync('git pull origin main', {
+        cwd: CONFIG.paths.projectRoot,
+        stdio: 'inherit',
+        timeout: CONFIG.gitTimeoutMs
+      });
+    } catch (pullError) {
+      log('Warning: Could not pull from origin/main. Continuing with local main.', 'WARN');
+      // Continue anyway - maybe offline or no remote configured
+    }
 
     // Commit any uncommitted changes first
     log('Git: Checking for uncommitted changes...', 'GIT');
@@ -297,24 +436,36 @@ function setupGitBranch() {
       });
     }
 
+    // NEW: Verify we're on main before creating new branch
+    const verifyBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd: CONFIG.paths.projectRoot,
+      timeout: CONFIG.gitTimeoutMs
+    }).toString().trim();
+
+    if (verifyBranch !== 'main') {
+      throw new Error(`Expected to be on main branch, but on ${verifyBranch}`);
+    }
+
     // Create and checkout new branch
     const sessionName = getSessionName();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const branchName = `oreo-${sessionName}-${timestamp}`;
 
-    log(`Checking out new branch: ${branchName}`, 'GIT');
+    log(`Creating new branch from main: ${branchName}`, 'GIT');
     execSync(`git checkout -b "${branchName}"`, {
       cwd: CONFIG.paths.projectRoot,
       stdio: 'inherit',
       timeout: CONFIG.gitTimeoutMs
     });
 
+    log(`Successfully created session branch: ${branchName}`, 'SUCCESS');
     return branchName;
   } catch (e) {
     if (e.killed && e.signal === 'SIGTERM') {
       log(`Git branch setup timeout after ${CONFIG.gitTimeoutMs / 1000}s`, 'ERROR');
     } else {
-      log(`Git branch setup failed: ${e.message}`, 'WARN');
+      log(`Git branch setup failed: ${e.message}`, 'ERROR');
+      log('Please resolve git issues and try again', 'ERROR');
     }
     return null;
   }

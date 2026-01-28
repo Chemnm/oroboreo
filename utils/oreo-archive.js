@@ -123,8 +123,8 @@ function getArchivePath() {
   const hour = String(sessionDate.getHours()).padStart(2, '0');
   const minute = String(sessionDate.getMinutes()).padStart(2, '0');
 
-  // Folder name: sessionName-YYYY-MM-DD-HH-MM
-  const folderName = `${sessionName}-${year}-${month}-${day}-${hour}-${minute}`;
+  // Folder name: YYYY-MM-DD-HH-MM-sessionName
+  const folderName = `${year}-${month}-${day}-${hour}-${minute}-${sessionName}`;
 
   // Year/month subdirectory structure
   const yearMonthDir = path.join(ARCHIVE_DIR, year.toString(), month);
@@ -703,11 +703,11 @@ function createPullRequest(sessionName, archivePath) {
         // Extract PR number from URL
         const prNumber = prUrl.match(/\/pull\/(\d+)/)?.[1];
         if (prNumber) {
-          execSync(`gh pr merge ${prNumber} --squash --delete-branch`, {
+          execSync(`gh pr merge ${prNumber} --merge --delete-branch`, {
             cwd: PROJECT_ROOT,
             stdio: 'inherit'
           });
-          log('  ✅ PR merged and branch deleted', 'green');
+          log('  ✅ PR merged (preserving commit history) and branch deleted', 'green');
         }
       } catch (e) {
         log(`  ⚠️  Auto-merge failed: ${e.message}`, 'yellow');

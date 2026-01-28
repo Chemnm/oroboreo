@@ -179,10 +179,10 @@ const GIT_CONFIG = {
   autoCommit: true,
 
   // Create pull request after successful session
-  autoCreatePR: false,  // Set to true to auto-create PR via GitHub CLI
+  autoCreatePR: true,  // Set to true to auto-create PR via GitHub CLI
 
   // Auto-merge PR to main (DANGEROUS - dev only!)
-  autoMergeToMain: false,  // Requires autoCreatePR: true
+  autoMergeToMain: false,  // Requires autoCreatePR: true and allowAutoMerge: true
 
   // Safety: Prevent auto-merge in production
   // Set to true to allow autoMergeToMain (requires manual confirmation)
