@@ -1,4 +1,4 @@
-# Oroboreo - 5-Minute Quick Start
+# Oroboreo- 5-Minute Quick Start
 
 Get your first autonomous development session running in under 5 minutes.
 
@@ -16,25 +16,42 @@ Get your first autonomous development session running in under 5 minutes.
 
 ---
 
-## Step 1: Install Oroboreo (30 sec)
+## Step 1: Add Oroboreo to Your Project (30 sec)
 
+**⚠️ Important:** Don't nest git repositories! Choose one of these methods:
+
+### Option A: Copy Without Git History (Recommended)
 ```bash
-npm install -g @oroboreo/cli
+# Clone temporarily, then copy just the files
+git clone https://github.com/chemnm/oroboreo.git temp-oroboreo
+cp -r temp-oroboreo/* ./oroboreo/
+# Remove .git
+  # PowerShell (Windows)
+  Remove-Item -Recurse -Force oroboreo/.git
+  rm -rf temp-oroboreo  # Clean up
+  # Bash (macOS/Linux)
+  rm -rf oroboreo/.git
+
+# The oroboreo/ folder is now part of YOUR project's git repo
 ```
 
-Verify installation:
+### Option B: Git Submodule (For tracking Oroboreo updates)
 ```bash
-oro-init --help
+# Add as a submodule
+cd your-project/
+git submodule add https://github.com/chemnm/oroboreo.git oroboreo
+git submodule update --init --recursive
 ```
+
+**Result:** You now have `your-project/oroboreo/` folder integrated into your project.
 
 ---
 
 ## Step 2: Configure AI Provider (1 min)
 
-Navigate to your project and create a `.env` file:
-
 ```bash
-cd your-project
+cd oroboreo
+cp .env.example .env
 ```
 
 ### Option A: Claude Code Subscription (Recommended for Individuals)
@@ -44,7 +61,7 @@ cd your-project
 npx @anthropic-ai/claude-code login
 ```
 
-**Create `.env` file:**
+**Edit `.env`:**
 ```
 AI_PROVIDER=subscription
 # Leave ANTHROPIC_API_KEY blank
@@ -55,7 +72,7 @@ AI_PROVIDER=subscription
 
 ### Option B: Anthropic API (Pay-As-You-Go)
 
-**Create `.env` file:**
+**Edit `.env`:**
 ```
 AI_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-...
@@ -69,7 +86,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ### Option C: AWS Bedrock (Enterprise)
 
-**Create `.env` file:**
+**Edit `.env`:**
 ```
 AI_PROVIDER=bedrock
 AWS_ACCESS_KEY_ID=AKIA...
@@ -87,7 +104,7 @@ AWS_REGION=us-east-1
 ## Step 3: Initialize (Optional - 1 min)
 
 ```bash
-oro-init
+node oroboreo/utils/oreo-init.js
 ```
 
 **What it does:**
@@ -105,7 +122,7 @@ oro-init
 ### Option A: Generate with Architect (Opus)
 
 ```bash
-oro-generate "Add user authentication with JWT"
+node oroboreo/utils/oreo-generate.js "Add user authentication with JWT"
 ```
 
 **What it does:**
@@ -115,7 +132,7 @@ oro-generate "Add user authentication with JWT"
 
 ### Option B: Write Tasks Manually
 
-Edit `cookie-crumbs.md`:
+Edit `oroboreo/cookie-crumbs.md`:
 
 ```markdown
 **Session**: user-authentication
@@ -138,7 +155,7 @@ Edit `cookie-crumbs.md`:
 ## Step 5: Run The Golden Loop
 
 ```bash
-oro-run
+node oroboreo/utils/oreo-run.js
 ```
 
 **What it does:**
@@ -187,13 +204,13 @@ Found issues? Report them:
 
 ```bash
 # Option A: Write to human-feedback.md
-# Edit human-feedback.md with issues
+# Edit oroboreo/human-feedback.md with issues
 
 # Option B: Pass directly
-oro-feedback "The login button doesn't work"
+node oroboreo/utils/oreo-feedback.js "The login button doesn't work"
 
 # Then run fixes
-oro-run
+node oroboreo/utils/oreo-run.js
 ```
 
 ---
@@ -202,10 +219,10 @@ oro-run
 
 ```bash
 # Export to CSV
-oro-costs csv
+node oroboreo/utils/oreo-costs.js csv
 
 # Compare with CloudWatch (real token counts)
-oro-costs cloudwatch
+node oroboreo/utils/oreo-costs.js cloudwatch
 ```
 
 ---
@@ -214,13 +231,10 @@ oro-costs cloudwatch
 
 | File | Purpose |
 |------|---------|
-| `oro-run` | Main loop - executes tasks |
-| `oro-generate` | Generate NEW feature tasks |
-| `oro-feedback` | Generate FIX tasks from issues |
-| `oro-init` | Initialize in new project |
-| `oro-archive` | Archive completed sessions |
-| `oro-costs` | Export/compare costs |
-| `oro-diagnose` | Post-mortem analysis for hung tasks |
+| `utils/oreo-run.js` | Main loop - executes tasks |
+| `utils/oreo-generate.js` | Generate NEW feature tasks |
+| `utils/oreo-feedback.js` | Generate FIX tasks from issues |
+| `utils/oreo-init.js` | Initialize in new project |
 | `cookie-crumbs.md` | Task list (like PRD.md) |
 | `creme-filling.md` | System rules (like AGENTS.md) |
 | `progress.txt` | Session memory |
@@ -228,17 +242,19 @@ oro-costs cloudwatch
 | `costs.json` | Cost tracking |
 | `tests/` | Session verification scripts (archived) |
 | `tests/reusable/` | Generic tests (kept across sessions) |
+| `utils/oreo-costs.js` | Export/compare costs |
+| `utils/oreo-diagnose.js` | Post-mortem analysis for hung tasks |
 
 ---
 
 ## Troubleshooting
 
 ### "AWS credentials not found"
-- Check `.env` exists in your project directory
+- Check `oroboreo/.env` exists
 - Verify: `aws bedrock list-foundation-models --region us-east-1`
 
 ### "cookie-crumbs.md not found"
-- Run `oro-init` or create manually
+- Run `node oroboreo/utils/oreo-init.js` or create manually
 
 ### "Claude Code not found"
 - Install: `npm install -g @anthropic-ai/claude-code`
@@ -252,15 +268,15 @@ oro-costs cloudwatch
 ## Workflow Summary
 
 ```
-1. oro-generate      → Create tasks (NEW features)
+1. node oroboreo/utils/oreo-generate.js   → Create tasks (NEW features)
          ↓
-2. oro-run           → Execute tasks (THE LOOP)
+2. node oroboreo/utils/oreo-run.js        → Execute tasks (THE LOOP)
          ↓
-3. [Test manually]    → Find issues
+3. [Test manually]                        → Find issues
          ↓
-4. oro-feedback      → Create fix tasks
+4. node oroboreo/utils/oreo-feedback.js   → Create fix tasks
          ↓
-5. oro-run           → Execute fixes
+5. node oroboreo/utils/oreo-run.js        → Execute fixes
          ↓
    [Repeat until done]
 ```

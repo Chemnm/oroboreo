@@ -46,9 +46,13 @@ const path = require('path');
 // CONFIGURATION
 // ============================================================================
 
-const OROBOREO_DIR = path.join(__dirname, '..');
-const COSTS_FILE = path.join(OROBOREO_DIR, 'costs.json');
-const ENV_FILE = path.join(OROBOREO_DIR, '.env');
+const { getPaths } = require('./oreo-config.js');
+
+// Get paths from centralized config (uses process.cwd()/oroboreo/)
+const paths = getPaths();
+const OROBOREO_DIR = paths.oroboreoDir;
+const COSTS_FILE = paths.costs;
+const ENV_FILE = paths.env;
 
 const colors = {
   reset: '\x1b[0m',

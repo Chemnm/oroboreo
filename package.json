@@ -1,16 +1,16 @@
 {
   "name": "@oroboreo/cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The Golden Loop - Self-improving, cost-optimized autonomous development engine",
   "main": "utils/oreo-run.js",
   "bin": {
-    "oreo-init": "./utils/oreo-init.js",
-    "oreo-generate": "./utils/oreo-generate.js",
-    "oreo-feedback": "./utils/oreo-feedback.js",
-    "oreo-run": "./utils/oreo-run.js",
-    "oreo-archive": "./utils/oreo-archive.js",
-    "oreo-costs": "./utils/oreo-costs.js",
-    "oreo-diagnose": "./utils/oreo-diagnose.js"
+    "oro-init": "./utils/oreo-init.js",
+    "oro-generate": "./utils/oreo-generate.js",
+    "oro-feedback": "./utils/oreo-feedback.js",
+    "oro-run": "./utils/oreo-run.js",
+    "oro-archive": "./utils/oreo-archive.js",
+    "oro-costs": "./utils/oreo-costs.js",
+    "oro-diagnose": "./utils/oreo-diagnose.js"
   },
   "scripts": {
     "init": "node utils/oreo-init.js",
@@ -26,6 +26,7 @@
     ".env.example",
     "README.md",
     "QUICKSTART.md",
+    "QUICKSTART-CLONE.md",
     "transparent_logo.svg",
     "LICENSE"
   ],

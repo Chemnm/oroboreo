@@ -123,7 +123,7 @@ Oroboreo is designed for cost-effective autonomous development:
 npm install -g @oroboreo/cli
 
 # Verify installation
-oreo-init --help
+oro-init --help
 ```
 
 ### Option 2: Clone Repository
@@ -143,7 +143,7 @@ cp -r oroboreo/ your-project/oroboreo/
 cd your-project
 
 # Initialize Oroboreo (AI-powered or manual)
-oreo-init
+oro-init
 # - Discovers your project structure
 # - Creates creme-filling.md with Universal Laws
 # - Sets up .env for AWS Bedrock (optional AI analysis: ~$0.10-0.30)
@@ -154,10 +154,10 @@ oreo-init
 #### Option A: Generate NEW Feature Tasks
 ```bash
 # Use Opus 4.5 to generate comprehensive task breakdown
-oreo-generate "Add user authentication with JWT"
+oro-generate "Add user authentication with JWT"
 
 # OR: Create new-prompt.md with detailed feature description, then:
-oreo-generate
+oro-generate
 # Script will ask if you want to use new-prompt.md
 # File is archived and cleared after generation
 ```
@@ -170,7 +170,7 @@ oreo-generate
 ```bash
 # 1. Write issues you found during testing in human-feedback.md
 # 2. Run the feedback architect
-oreo-feedback
+oro-feedback
 ```
 - Opus analyzes your feedback + latest archive
 - Creates fix tasks in `cookie-crumbs.md`
@@ -182,7 +182,7 @@ oreo-feedback
 ### ▶️ Execute Tasks
 ```bash
 # Run the Golden Loop
-oreo-run
+oro-run
 ```
 - Auto-loops through all tasks in `cookie-crumbs.md`
 - Smart model selection (Haiku for [SIMPLE], Sonnet for [COMPLEX])
@@ -193,13 +193,13 @@ oreo-run
 ### 📊 View Costs
 ```bash
 # Export cost data to CSV or compare with CloudWatch
-oreo-costs
+oro-costs
 ```
 
 ### 🔍 Diagnose Issues
 ```bash
 # Post-mortem analysis for hung/failed tasks
-oreo-diagnose
+oro-diagnose
 ```
 - Analyzes execution logs from archived sessions
 - Identifies timeout patterns and error causes
@@ -208,8 +208,10 @@ oreo-diagnose
 
 ---
 
-## 🎬 Quick Start 
-Check out the [Quickstart Guide](QUICKSTART.md) to get up and running.
+## 🎬 Quick Start
+
+- **NPM Install (Recommended):** [QUICKSTART.md](QUICKSTART.md)
+- **Manual Clone:** [QUICKSTART-CLONE.md](QUICKSTART-CLONE.md)
 
 ---
 
@@ -279,12 +281,12 @@ your-project/
 | `tests/reusable/` | Generic verification scripts (persist across sessions) |
 
 ### Workflow
-1. **Initialize** - Run `oreo-init.js` to set up creme-filling.md (AI-powered or manual)
+1. **Initialize** - Run `oro-init` to set up creme-filling.md (AI-powered or manual)
 2. **Plan Tasks** - Choose your approach:
-   - **NEW Feature**: `oreo-generate.js "Add user authentication"` (Opus generates fresh tasks)
-   - **FIX Issues**: Write issues in `human-feedback.md` → run `oreo-feedback.js` (Opus analyzes archives + creates fix tasks)
+   - **NEW Feature**: `oro-generate "Add user authentication"` (Opus generates fresh tasks)
+   - **FIX Issues**: Write issues in `human-feedback.md` → run `oro-feedback` (Opus analyzes archives + creates fix tasks)
    - **Manual**: Write tasks directly in `cookie-crumbs.md`
-3. **Execute** - `oreo-run.js` loops through tasks:
+3. **Execute** - `oro-run` loops through tasks:
    - Parses next incomplete task `- [ ]`
    - Selects model based on `[SIMPLE]`/`[COMPLEX]` tags (Haiku/Sonnet)
    - Spawns Claude Code with Bedrock
@@ -294,7 +296,7 @@ your-project/
    - Marks task `- [x]`
    - 30-minute timeout with heartbeat logging
 4. **Archive** - Completed sessions preserved in `archives/YYYY/MM/session-name-timestamp/` for learning
-5. **Diagnose** - If tasks hang/fail, run `oreo-diagnose.js` on archived session for analysis
+5. **Diagnose** - If tasks hang/fail, run `oro-diagnose` on archived session for analysis
 
 ---
 

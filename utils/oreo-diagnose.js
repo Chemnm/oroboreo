@@ -19,7 +19,6 @@
  */
 
 const fs = require('fs');
-const path = require('path');
 
 const COLORS = {
   reset: '\x1b[0m',
@@ -227,8 +226,10 @@ function calculateDuration(startTime, endTime) {
 }
 
 // Main
+const { getPaths } = require('./oreo-config.js');
+
 const customLogPath = process.argv[2];
-const defaultLogPath = path.join(__dirname, '..', 'oreo-execution.log');
+const defaultLogPath = getPaths().log;
 const logPath = customLogPath || defaultLogPath;
 
 analyzeLog(logPath);

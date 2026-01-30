@@ -111,7 +111,6 @@ function loadEnv() {
   // Check multiple locations for .env file (like ralph-loop.js)
   const locations = [
     path.join(__dirname, '..', '.env'),
-    path.join(__dirname, '.env')
   ];
 
   for (const envFile of locations) {
@@ -722,7 +721,26 @@ async function main() {
     fs.writeFileSync(CONFIG.paths.prompt, prompt);
 
     // 5. Execute Claude Code
-    const batFile = path.join(__dirname, 'run-with-prompt.bat');
+    // Cross-platform: use .bat on Windows, .sh on Linux/macOS
+    const scriptExt = process.platform === 'win32' ? '.bat' : '.sh';
+    const batFile = path.join(__dirname, `run-with-prompt${scriptExt}`);
+
+    // On Unix systems, ensure script is executable
+    if (process.platform !== 'win32') {
+      try {
+        fs.chmodSync(batFile, '755');
+      } catch (e) {
+        log(`Warning: Could not make script executable: ${e.message}`, 'WARN');
+      }
+    }
+
+    // Save credentials BEFORE clearing (clearProviderEnv deletes them from process.env)
+    const savedCredentials = {
+      AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+      AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+      AWS_REGION: process.env.AWS_REGION,
+      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY
+    };
 
     // Clear ALL provider environment variables first
     clearProviderEnv();
@@ -741,14 +759,14 @@ async function main() {
       // AWS Bedrock - Set Bedrock-specific vars
       env.ANTHROPIC_MODEL = model.id;
       env.CLAUDE_CODE_USE_BEDROCK = '1';
-      env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
-      env.AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
-      env.AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+      env.AWS_REGION = savedCredentials.AWS_REGION || 'us-east-1';
+      env.AWS_ACCESS_KEY_ID = savedCredentials.AWS_ACCESS_KEY_ID;
+      env.AWS_SECRET_ACCESS_KEY = savedCredentials.AWS_SECRET_ACCESS_KEY;
       log(`Using AWS Bedrock with model: ${model.id}`, 'INFO');
 
     } else if (provider === 'anthropic') {
       // Anthropic API - Set ONLY API key (no ANTHROPIC_MODEL)
-      env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+      env.ANTHROPIC_API_KEY = savedCredentials.ANTHROPIC_API_KEY;
       log(`Using Anthropic API with model: ${model.id}`, 'INFO');
 
     } else if (provider === 'subscription') {

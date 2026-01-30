@@ -101,13 +101,24 @@ function getModelConfig() {
 // COMMON PATHS
 // ============================================================================
 
-function getPaths(baseDir) {
+/**
+ * Returns paths for user files based on current working directory.
+ * All user files go in {cwd}/oroboreo/ subfolder.
+ * Works for both NPM install and cloned repo scenarios.
+ */
+function getPaths() {
+  const oroboreoDir = path.join(process.cwd(), 'oroboreo');
   return {
-    tasks: path.join(baseDir, '..', 'cookie-crumbs.md'),
-    rules: path.join(baseDir, '..', 'creme-filling.md'),
-    costs: path.join(baseDir, '..', 'costs.json'),
-    archives: path.join(baseDir, '..', 'archives'),
-    projectRoot: path.join(baseDir, '..', '..')
+    oroboreoDir: oroboreoDir,
+    tasks: path.join(oroboreoDir, 'cookie-crumbs.md'),
+    rules: path.join(oroboreoDir, 'creme-filling.md'),
+    costs: path.join(oroboreoDir, 'costs.json'),
+    progress: path.join(oroboreoDir, 'progress.txt'),
+    feedback: path.join(oroboreoDir, 'human-feedback.md'),
+    env: path.join(oroboreoDir, '.env'),
+    log: path.join(oroboreoDir, 'oreo-execution.log'),
+    archives: path.join(oroboreoDir, 'archives'),
+    projectRoot: process.cwd()
   };
 }
 

@@ -56,8 +56,8 @@ const CONFIG = {
   maxOutputTokens: null,
   thinkingBudget: null,
   paths: {
-    ...getPaths(__dirname),
-    prompt: path.join(__dirname, '.init-prompt.txt')
+    ...getPaths(),
+    prompt: path.join(__dirname, '.init-prompt.txt')  // Package-internal file
   }
 };
 
@@ -77,26 +77,21 @@ function question(prompt) {
 // ============================================================================
 
 function loadEnv() {
-  // Check multiple locations for .env file
-  const locations = [
-    path.join(__dirname, '..', '.env'),
-    path.join(__dirname, '.env')  // Also check utils/.env
-  ];
+  // Load .env from oroboreo/ subfolder in user's project
+  const envFile = getPaths().env;
 
-  for (const envFile of locations) {
-    if (fs.existsSync(envFile)) {
-      const content = fs.readFileSync(envFile, 'utf8');
-      content.split('\n').forEach(line => {
-        // Skip comments and empty lines
-        if (line.trim().startsWith('#') || !line.trim()) return;
+  if (fs.existsSync(envFile)) {
+    const content = fs.readFileSync(envFile, 'utf8');
+    content.split('\n').forEach(line => {
+      // Skip comments and empty lines
+      if (line.trim().startsWith('#') || !line.trim()) return;
 
-        const [key, ...value] = line.split('=');
-        if (key && value.length > 0) {
-          process.env[key.trim()] = value.join('=').trim();
-        }
-      });
-      return true;
-    }
+      const [key, ...value] = line.split('=');
+      if (key && value.length > 0) {
+        process.env[key.trim()] = value.join('=').trim();
+      }
+    });
+    return true;
   }
   return false;
 }
@@ -320,8 +315,15 @@ async function main() {
   log('OROBOREO INITIALIZATION', 'bright');
   log('===============================================================================\n', 'yellow');
 
-  const oroborosDir = __dirname;
-  const projectRoot = path.join(oroborosDir, '..', '..');
+  // Get paths from centralized config (uses process.cwd()/oroboreo/)
+  const paths = getPaths();
+  const oroborosDir = paths.oroboreoDir;
+  const projectRoot = paths.projectRoot;
+
+  // Ensure oroboreo/ folder exists
+  if (!fs.existsSync(oroborosDir)) {
+    fs.mkdirSync(oroborosDir, { recursive: true });
+  }
 
   log(`Project Root: ${projectRoot}`, 'cyan');
   log(`OroboreoDir: ${oroborosDir}\n`, 'cyan');
@@ -484,7 +486,7 @@ async function main() {
     const configureProvider = await question(`Configure ${providerName} credentials now? (yes/no): `);
 
     if (configureProvider.toLowerCase() === 'yes' || configureProvider.toLowerCase() === 'y') {
-      await setupBedrock(oroborosDir);
+      await setupBedrock();
     } else {
       log(`Skipping ${providerName} setup`, 'yellow');
       log('Run: cp .env.example .env  and fill in your credentials', 'cyan');
@@ -691,7 +693,7 @@ After all tasks complete:
 `;
 }
 
-async function setupBedrock(oroborosDir) {
+async function setupBedrock() {
   log('\nAWS Bedrock Configuration\n', 'bright');
 
   const awsAccessKey = await question('AWS Access Key ID: ');
@@ -706,7 +708,7 @@ AWS_SECRET_ACCESS_KEY=${awsSecretKey}
 AWS_REGION=${awsRegion}
 `;
 
-  fs.writeFileSync(path.join(oroborosDir, '.env'), envContent, 'utf8');
+  fs.writeFileSync(getPaths().env, envContent, 'utf8');
 
   log('\nCredentials saved to .env', 'green');
   log('Remember to add .env to .gitignore!', 'yellow');

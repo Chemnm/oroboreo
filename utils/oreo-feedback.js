@@ -69,9 +69,8 @@ const CONFIG = {
 
   // File Paths (Oreo Theme)
   paths: {
-    ...getPaths(__dirname),                                      // Shared paths
-    feedback: path.join(__dirname, '..', 'human-feedback.md'),   // Human input
-    prompt: path.join(__dirname, '.architect-prompt.txt')        // Temp prompt
+    ...getPaths(),                                               // Shared paths from config
+    prompt: path.join(__dirname, '.architect-prompt.txt')        // Package-internal temp prompt
   }
 };
 
@@ -80,23 +79,21 @@ const CONFIG = {
 // ============================================================================
 
 function loadEnv() {
-  // Check multiple locations for .env file (like oreo-run.js)
-  const locations = [
-    path.join(__dirname, '.env'),
-    path.join(__dirname, '..', '.env')
-  ];
+  // Load .env from oroboreo/ subfolder in user's project
+  const envFile = getPaths().env;
 
-  for (const envFile of locations) {
-    if (fs.existsSync(envFile)) {
-      const content = fs.readFileSync(envFile, 'utf8');
-      content.split('\n').forEach(line => {
-        const [key, ...value] = line.split('=');
-        if (key && value.length > 0) {
-          process.env[key.trim()] = value.join('=').trim();
-        }
-      });
-      return true;
-    }
+  if (fs.existsSync(envFile)) {
+    const content = fs.readFileSync(envFile, 'utf8');
+    content.split('\n').forEach(line => {
+      // Skip comments and empty lines
+      if (line.trim().startsWith('#') || !line.trim()) return;
+
+      const [key, ...value] = line.split('=');
+      if (key && value.length > 0) {
+        process.env[key.trim()] = value.join('=').trim();
+      }
+    });
+    return true;
   }
   return false;
 }

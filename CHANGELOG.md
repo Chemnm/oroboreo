@@ -5,6 +5,25 @@ All notable changes to Oroboreo will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-01-28
+
+### Fixed
+- **Critical NPM Path Resolution Bug:** Scripts now correctly use `process.cwd()/oroboreo/` instead of NPM package location
+  - All scripts (`oreo-init`, `oreo-run`, `oreo-generate`, `oreo-feedback`, `oreo-archive`, `oreo-costs`, `oreo-diagnose`) now work correctly when installed via NPM
+  - Unified path strategy works for both NPM install and cloned repo scenarios
+  - Centralized path configuration in `oreo-config.js` via `getPaths()` function
+
+### Added
+- **Linux/macOS Support:** Added `utils/run-with-prompt.sh` shell script for Unix-based systems
+  - Properly exports environment variables for containerized environments (GitHub Codespaces)
+  - Supports both Bedrock and Anthropic API modes
+
+### Changed
+- **CLI Command Prefix:** Changed from `oreo-*` to `oro-*` for shorter commands
+  - `oro-init`, `oro-run`, `oro-generate`, `oro-feedback`, `oro-archive`, `oro-costs`, `oro-diagnose`
+- `getPaths()` function no longer requires `__dirname` parameter - automatically uses `process.cwd()/oroboreo/`
+- Consistent `.env` loading across all scripts using centralized path
+
 ## [1.0.0] - 2026-01-26
 
 ### Added
@@ -54,4 +73,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provider setup instructions (Bedrock & Anthropic)
 - Test organization guidelines
 
+[1.0.1]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.0

@@ -44,10 +44,13 @@ const { execSync } = require('child_process');
 // CONFIGURATION
 // ============================================================================
 
-// __dirname is utils/, so go up one level to oroboreo/
-const OROBOREO_DIR = path.join(__dirname, '..');
-const ARCHIVE_DIR = path.join(OROBOREO_DIR, 'archives');
-const PROJECT_ROOT = path.join(OROBOREO_DIR, '..');
+const { getPaths } = require('./oreo-config.js');
+
+// Get paths from centralized config (uses process.cwd()/oroboreo/)
+const paths = getPaths();
+const OROBOREO_DIR = paths.oroboreoDir;
+const ARCHIVE_DIR = paths.archives;
+const PROJECT_ROOT = paths.projectRoot;
 
 // Files to archive (tests/ handled separately with smart archival)
 const FILES_TO_ARCHIVE = [

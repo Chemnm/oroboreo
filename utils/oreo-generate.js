@@ -67,8 +67,8 @@ const CONFIG = {
   maxOutputTokens: null,
   thinkingBudget: null,
   paths: {
-    ...getPaths(__dirname),
-    prompt: path.join(__dirname, '.generate-prompt.txt')
+    ...getPaths(),
+    prompt: path.join(__dirname, '.generate-prompt.txt')  // Package-internal file
   }
 };
 
@@ -87,24 +87,21 @@ function question(prompt) {
 // ============================================================================
 
 function loadEnv() {
-  // Check multiple locations for .env file
-  // __dirname is utils/, so go up one level to find oroboreo/.env
-  const locations = [
-    path.join(__dirname, '..', '.env'),
-    path.join(__dirname, '.env')
-  ];
+  // Load .env from oroboreo/ subfolder in user's project
+  const envFile = getPaths().env;
 
-  for (const envFile of locations) {
-    if (fs.existsSync(envFile)) {
-      const content = fs.readFileSync(envFile, 'utf8');
-      content.split('\n').forEach(line => {
-        const [key, ...value] = line.split('=');
-        if (key && value.length > 0) {
-          process.env[key.trim()] = value.join('=').trim();
-        }
-      });
-      return true;
-    }
+  if (fs.existsSync(envFile)) {
+    const content = fs.readFileSync(envFile, 'utf8');
+    content.split('\n').forEach(line => {
+      // Skip comments and empty lines
+      if (line.trim().startsWith('#') || !line.trim()) return;
+
+      const [key, ...value] = line.split('=');
+      if (key && value.length > 0) {
+        process.env[key.trim()] = value.join('=').trim();
+      }
+    });
+    return true;
   }
   return false;
 }
