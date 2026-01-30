@@ -67,8 +67,8 @@ const CONFIG = {
   maxOutputTokens: null,
   thinkingBudget: null,
   paths: {
-    ...getPaths(),
-    prompt: path.join(__dirname, '.generate-prompt.txt')  // Package-internal file
+    ...getPaths(__dirname),
+    prompt: path.join(__dirname, '.generate-prompt.txt')
   }
 };
 
@@ -87,23 +87,68 @@ function question(prompt) {
 // ============================================================================
 
 function loadEnv() {
-  // Load .env from oroboreo/ subfolder in user's project
-  const envFile = getPaths().env;
+  // Check multiple locations for .env file
+  // __dirname is utils/, so go up one level to find oroboreo/.env
+  const locations = [
+    path.join(__dirname, '..', '.env'),
+    path.join(__dirname, '..', 'bedrock', '.env')
+  ];
 
-  if (fs.existsSync(envFile)) {
-    const content = fs.readFileSync(envFile, 'utf8');
-    content.split('\n').forEach(line => {
-      // Skip comments and empty lines
-      if (line.trim().startsWith('#') || !line.trim()) return;
-
-      const [key, ...value] = line.split('=');
-      if (key && value.length > 0) {
-        process.env[key.trim()] = value.join('=').trim();
-      }
-    });
-    return true;
+  for (const envFile of locations) {
+    if (fs.existsSync(envFile)) {
+      const content = fs.readFileSync(envFile, 'utf8');
+      content.split('\n').forEach(line => {
+        const [key, ...value] = line.split('=');
+        if (key && value.length > 0) {
+          process.env[key.trim()] = value.join('=').trim();
+        }
+      });
+      return true;
+    }
   }
   return false;
+}
+
+/**
+ * Ensures AWS credentials file exists for SDK fallback
+ * Creates ~/.aws/credentials from environment variables if it doesn't exist
+ * This makes Oroboreo work without AWS CLI installed
+ */
+function ensureAwsCredentialsFile() {
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  const awsDir = path.join(homeDir, '.aws');
+  const credentialsFile = path.join(awsDir, 'credentials');
+
+  // Only proceed if we have AWS credentials in env and provider is bedrock
+  const provider = (process.env.AI_PROVIDER || 'subscription').toLowerCase();
+  if (provider !== 'bedrock') return;
+
+  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+    return; // No credentials to write
+  }
+
+  // Check if credentials file already exists
+  if (fs.existsSync(credentialsFile)) {
+    return;
+  }
+
+  // Create ~/.aws directory if needed
+  if (!fs.existsSync(awsDir)) {
+    log('Creating ~/.aws directory...', 'cyan');
+    fs.mkdirSync(awsDir, { recursive: true });
+  }
+
+  // Write credentials file
+  const region = process.env.AWS_REGION || 'us-east-1';
+  const credentialsContent = `[default]
+aws_access_key_id = ${process.env.AWS_ACCESS_KEY_ID}
+aws_secret_access_key = ${process.env.AWS_SECRET_ACCESS_KEY}
+region = ${region}
+`;
+
+  log('Creating ~/.aws/credentials from .env values...', 'cyan');
+  fs.writeFileSync(credentialsFile, credentialsContent, { mode: 0o600 });
+  log('AWS credentials file created successfully', 'green');
 }
 
 function archiveExistingTasks() {
@@ -298,6 +343,9 @@ async function main() {
   if (!loadEnv()) {
     log('No .env file found', 'yellow');
   }
+
+  // Ensure AWS credentials file exists (for SDK fallback when AWS CLI not installed)
+  ensureAwsCredentialsFile();
 
   // Set up provider-aware models
   const MODELS = getModelConfig();

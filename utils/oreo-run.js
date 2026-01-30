@@ -129,6 +129,49 @@ function loadEnv() {
   return false;
 }
 
+/**
+ * Ensures AWS credentials file exists for SDK fallback
+ * Creates ~/.aws/credentials from environment variables if it doesn't exist
+ * This makes Oroboreo work without AWS CLI installed
+ */
+function ensureAwsCredentialsFile() {
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  const awsDir = path.join(homeDir, '.aws');
+  const credentialsFile = path.join(awsDir, 'credentials');
+
+  // Only proceed if we have AWS credentials in env and provider is bedrock
+  const provider = (process.env.AI_PROVIDER || 'subscription').toLowerCase();
+  if (provider !== 'bedrock') return;
+
+  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+    return; // No credentials to write
+  }
+
+  // Check if credentials file already exists
+  if (fs.existsSync(credentialsFile)) {
+    log('AWS credentials file exists, using existing config');
+    return;
+  }
+
+  // Create ~/.aws directory if needed
+  if (!fs.existsSync(awsDir)) {
+    log('Creating ~/.aws directory...');
+    fs.mkdirSync(awsDir, { recursive: true });
+  }
+
+  // Write credentials file
+  const region = process.env.AWS_REGION || 'us-east-1';
+  const credentialsContent = `[default]
+aws_access_key_id = ${process.env.AWS_ACCESS_KEY_ID}
+aws_secret_access_key = ${process.env.AWS_SECRET_ACCESS_KEY}
+region = ${region}
+`;
+
+  log('Creating ~/.aws/credentials from .env values...');
+  fs.writeFileSync(credentialsFile, credentialsContent, { mode: 0o600 });
+  log('AWS credentials file created successfully', 'SUCCESS');
+}
+
 function loadCostLog() {
   if (fs.existsSync(CONFIG.paths.costs)) {
     try {
@@ -612,6 +655,9 @@ async function main() {
   if (!loadEnv()) {
     log('No .env file found in oroboreo directory', 'WARN');
   }
+
+  // Ensure AWS credentials file exists (for SDK fallback when AWS CLI not installed)
+  ensureAwsCredentialsFile();
 
   // Set up provider-aware models
   const MODELS = getModelConfig();
