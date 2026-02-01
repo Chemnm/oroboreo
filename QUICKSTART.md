@@ -13,6 +13,9 @@ Get your first autonomous development session running in under 5 minutes.
   - Anthropic API key with pay-as-you-go credits, OR
   - AWS Account with Bedrock access (enterprise)
 - An existing project (or create a new one)
+- **GitHub CLI (optional)**: Required for auto PR creation
+  - Install: https://cli.github.com/
+  - Without it: `⚠️ GitHub CLI (gh) not installed. Skipping PR creation.`
 
 ---
 
