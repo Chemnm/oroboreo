@@ -115,6 +115,16 @@ Oroboreo is designed for cost-effective autonomous development:
 
 ---
 
+## 📋 Prerequisites
+
+- **Node.js 18+** installed
+- **Claude Code CLI**: `npm install -g @anthropic-ai/claude-code`
+- **GitHub CLI (optional)**: Required for auto PR creation
+  - Install: https://cli.github.com/
+  - Without it, you'll see: `⚠️ GitHub CLI (gh) not installed. Skipping PR creation.`
+
+---
+
 ## 🚀 Installation
 
 ### Option 1: NPM (Recommended)
