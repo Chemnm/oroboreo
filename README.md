@@ -20,7 +20,7 @@ Oroboreo is a  meta-development system that combines Claude Code, AWS Bedrock, i
 - ✅ Self-improves over time (Feedback loop)
 
 ### 2. **Cost-Optimized & Flexible**
-- Supports AWS Bedrock (70%+ savings) OR Anthropic API (Claude Code subscription)
+- Supports AWS Bedrock OR Anthropic API (Claude Code subscription)
 - Smart model routing: Simple tasks → Haiku ($1/$5), Complex → Sonnet ($3/$15)
 - Real cost tracking with CloudWatch integration (Bedrock only)
 - Typical feature: $1-3 vs $5-10 with competitors
