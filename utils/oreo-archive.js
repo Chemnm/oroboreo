@@ -118,19 +118,20 @@ function getSessionCreatedDate() {
 }
 
 function getArchivePath() {
-  const sessionDate = getSessionCreatedDate();
+  // Use current time for archive timestamp (when archive is being created)
+  const now = new Date();
   const sessionName = getSessionName();
 
-  // Date is already in path (archives/YYYY/MM/), so folder only needs time + session name
-  // Format: {HH-MM-SS}-{sessionName} for chronological sorting
-  const year = sessionDate.getFullYear();
-  const month = String(sessionDate.getMonth() + 1).padStart(2, '0');
-  const hour = String(sessionDate.getHours()).padStart(2, '0');
-  const minute = String(sessionDate.getMinutes()).padStart(2, '0');
-  const second = String(sessionDate.getSeconds()).padStart(2, '0');
+  // Format: {DD-HH-MM-SS}-{sessionName} for chronological sorting
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+  const second = String(now.getSeconds()).padStart(2, '0');
 
-  // Folder name: HH-MM-SS-sessionName (chronological order within month)
-  const folderName = `${hour}-${minute}-${second}-${sessionName}`;
+  // Folder name: DD-HH-MM-SS-sessionName (chronological order within month)
+  const folderName = `${day}-${hour}-${minute}-${second}-${sessionName}`;
 
   // Year/month subdirectory structure
   const yearMonthDir = path.join(ARCHIVE_DIR, year.toString(), month);
