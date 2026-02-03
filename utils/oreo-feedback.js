@@ -210,8 +210,9 @@ function getLatestArchive() {
 
   if (allArchives.length === 0) return null;
 
-  // Sort by name (which includes timestamp) descending
-  allArchives.sort((a, b) => b.name.localeCompare(a.name));
+  // Sort by full path descending (year/month/name) - most recent first
+  // Path structure: archives/YYYY/MM/DD-HH-MM-SS-sessionName
+  allArchives.sort((a, b) => b.path.localeCompare(a.path));
 
   return allArchives[0];
 }
@@ -299,7 +300,8 @@ async function main() {
   // Find latest archive for context
   const latestArchive = getLatestArchive();
   if (latestArchive) {
-    console.log(`📁 Reference Archive: ${latestArchive.name}`);
+    const relativePath = path.relative(CONFIG.paths.projectRoot, latestArchive.path);
+    console.log(`📁 Reference Archive: ${relativePath}`);
   } else {
     console.log('📁 No previous archives found');
   }
