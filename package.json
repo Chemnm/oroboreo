@@ -1,6 +1,6 @@
 {
   "name": "@oroboreo/cli",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "The Golden Loop - Self-improving, cost-optimized autonomous development engine",
   "main": "utils/oreo-run.js",
   "bin": {
@@ -13,6 +13,7 @@
     "oro-diagnose": "./utils/oreo-diagnose.js"
   },
   "scripts": {
+    "postinstall": "node -e \"if(process.platform!=='win32'){require('child_process').execSync('chmod +x utils/run-with-prompt.sh',{cwd:__dirname})}\"",
     "init": "node utils/oreo-init.js",
     "generate": "node utils/oreo-generate.js",
     "run": "node utils/oreo-run.js",
