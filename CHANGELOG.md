@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Archive Sorting:** Fixed `getLatestArchive()` to correctly find the most recent archive by sorting on full path
   - Now properly handles `archives/YYYY/MM/DD-HH-MM-SS-sessionName` structure
   - Previously could return older archives from earlier months
+- **Linux/macOS Support:** Fixed scripts to use `run-with-prompt.sh` on Unix and `run-with-prompt.bat` on Windows
+  - `oreo-feedback.js`, `oreo-generate.js`, and `oreo-init.js` now detect OS and use correct runner
+  - Previously all scripts were hardcoded to `.bat` which failed on Linux with "Permission denied"
+- **NPM .env Loading:** Fixed all scripts to load `.env` from user's project directory (`process.cwd()/oroboreo/.env`)
+  - Previously scripts looked in NPM package directory (`__dirname`) which didn't work when installed globally
+  - Affects: `oreo-feedback.js`, `oreo-generate.js`, `oreo-init.js`, `oreo-run.js`
 
 ## [1.0.2] - 2026-01-30
 

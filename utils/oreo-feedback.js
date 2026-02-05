@@ -80,23 +80,22 @@ const CONFIG = {
 // ============================================================================
 
 function loadEnv() {
-  // Check multiple locations for .env file (like oreo-run.js)
-  const locations = [
-    path.join(__dirname, '.env'),
-    path.join(__dirname, '..', '.env')
-  ];
+  // Load .env from user's project directory (process.cwd()/oroboreo/.env)
+  // This works for both NPM install and cloned repo scenarios
+  const envFile = path.join(process.cwd(), 'oroboreo', '.env');
 
-  for (const envFile of locations) {
-    if (fs.existsSync(envFile)) {
-      const content = fs.readFileSync(envFile, 'utf8');
-      content.split('\n').forEach(line => {
-        const [key, ...value] = line.split('=');
-        if (key && value.length > 0) {
-          process.env[key.trim()] = value.join('=').trim();
-        }
-      });
-      return true;
-    }
+  if (fs.existsSync(envFile)) {
+    const content = fs.readFileSync(envFile, 'utf8');
+    content.split('\n').forEach(line => {
+      // Skip comments and empty lines
+      if (line.trim().startsWith('#') || !line.trim()) return;
+
+      const [key, ...value] = line.split('=');
+      if (key && value.length > 0) {
+        process.env[key.trim()] = value.join('=').trim();
+      }
+    });
+    return true;
   }
   return false;
 }
@@ -413,8 +412,10 @@ After all tasks complete, the human should verify:
   // Save prompt
   fs.writeFileSync(CONFIG.paths.prompt, architectPrompt);
 
-  // Run Opus
-  const batFile = path.join(__dirname, 'run-with-prompt.bat');
+  // Run Opus - use .sh on Linux/macOS, .bat on Windows
+  const isWindows = process.platform === 'win32';
+  const runScript = isWindows ? 'run-with-prompt.bat' : 'run-with-prompt.sh';
+  const batFile = path.join(__dirname, runScript);
 
   // Clear ALL provider environment variables first
   clearProviderEnv();

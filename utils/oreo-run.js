@@ -108,23 +108,23 @@ function log(message, type = 'INFO') {
 }
 
 function loadEnv() {
-  // Check multiple locations for .env file (like ralph-loop.js)
-  const locations = [
-    path.join(__dirname, '..', '.env'),
-  ];
+  // Load .env from user's project directory (process.cwd()/oroboreo/.env)
+  // This works for both NPM install and cloned repo scenarios
+  const envFile = path.join(process.cwd(), 'oroboreo', '.env');
 
-  for (const envFile of locations) {
-    if (fs.existsSync(envFile)) {
-      log(`Loading AWS credentials from ${path.basename(envFile)}...`);
-      const content = fs.readFileSync(envFile, 'utf8');
-      content.split('\n').forEach(line => {
-        const [key, ...value] = line.split('=');
-        if (key && value.length > 0) {
-          process.env[key.trim()] = value.join('=').trim();
-        }
-      });
-      return true;
-    }
+  if (fs.existsSync(envFile)) {
+    log(`Loading credentials from ${envFile}...`);
+    const content = fs.readFileSync(envFile, 'utf8');
+    content.split('\n').forEach(line => {
+      // Skip comments and empty lines
+      if (line.trim().startsWith('#') || !line.trim()) return;
+
+      const [key, ...value] = line.split('=');
+      if (key && value.length > 0) {
+        process.env[key.trim()] = value.join('=').trim();
+      }
+    });
+    return true;
   }
   return false;
 }
