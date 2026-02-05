@@ -44,13 +44,10 @@ const { execSync } = require('child_process');
 // CONFIGURATION
 // ============================================================================
 
-const { getPaths } = require('./oreo-config.js');
-
-// Get paths from centralized config (uses process.cwd()/oroboreo/)
-const paths = getPaths();
-const OROBOREO_DIR = paths.oroboreoDir;
-const ARCHIVE_DIR = paths.archives;
-const PROJECT_ROOT = paths.projectRoot;
+// __dirname is utils/, so go up one level to oroboreo/
+const OROBOREO_DIR = path.join(__dirname, '..');
+const ARCHIVE_DIR = path.join(OROBOREO_DIR, 'archives');
+const PROJECT_ROOT = path.join(OROBOREO_DIR, '..');
 
 // Files to archive (tests/ handled separately with smart archival)
 const FILES_TO_ARCHIVE = [
@@ -106,8 +103,13 @@ function getSessionCreatedDate() {
     const match = content.match(/\*\*Created\*\*:\s*(.+)/i);
     if (match && match[1]) {
       try {
-        // Parse formats like "2026-01-24 18:09" or "2026-01-24"
+        // Parse formats like "2026-01-24 18:09:30", "2026-01-24 18:09", or "2026-01-24"
         const dateStr = match[1].trim();
+        // If date-only (no space/time), append T00:00 to treat as local time
+        // (new Date("2026-01-24") is UTC, but new Date("2026-01-24T00:00") is local)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          return new Date(dateStr + 'T00:00');
+        }
         return new Date(dateStr.replace(' ', 'T'));
       } catch (e) {}
     }
@@ -116,18 +118,20 @@ function getSessionCreatedDate() {
 }
 
 function getArchivePath() {
-  const sessionDate = getSessionCreatedDate();
+  // Use current time for archive timestamp (when archive is being created)
+  const now = new Date();
   const sessionName = getSessionName();
 
-  // Extract year, month, date, hour, minute from session creation date
-  const year = sessionDate.getFullYear();
-  const month = String(sessionDate.getMonth() + 1).padStart(2, '0');
-  const day = String(sessionDate.getDate()).padStart(2, '0');
-  const hour = String(sessionDate.getHours()).padStart(2, '0');
-  const minute = String(sessionDate.getMinutes()).padStart(2, '0');
+  // Format: {DD-HH-MM-SS}-{sessionName} for chronological sorting
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+  const second = String(now.getSeconds()).padStart(2, '0');
 
-  // Folder name: YYYY-MM-DD-HH-MM-sessionName
-  const folderName = `${year}-${month}-${day}-${hour}-${minute}-${sessionName}`;
+  // Folder name: DD-HH-MM-SS-sessionName (chronological order within month)
+  const folderName = `${day}-${hour}-${minute}-${second}-${sessionName}`;
 
   // Year/month subdirectory structure
   const yearMonthDir = path.join(ARCHIVE_DIR, year.toString(), month);
@@ -463,7 +467,7 @@ TIP: The more detail you provide, the better the agent performs!
 -->
 
 **Session**: <!-- Session name here -->
-**Created**: ${new Date().toISOString().slice(0, 10)}
+**Created**: ${new Date().toISOString().slice(0, 19).replace('T', ' ')}
 **Status**: Ready for tasks
 
 ---
