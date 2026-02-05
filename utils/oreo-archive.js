@@ -444,7 +444,7 @@ it [x] and moves to the next one.
 USAGE:
   1. Define your feature/session name
   2. Add tasks in the format shown below
-  3. Run: node oroboreo/utils/oreo-run.js
+  3. Run: oro-run
   4. Watch the magic happen!
 
 TASK FORMAT:
@@ -800,9 +800,9 @@ function main() {
   } else if (args.includes('--help') || args.includes('-h')) {
     log('\nOroboreoArchive\n', 'bright');
     log('Usage:', 'cyan');
-    log('  node oroboreo/utils/oreo-archive.js           # Archive current session', 'reset');
-    log('  node oroboreo/utils/oreo-archive.js --reset   # Archive and reset for next session', 'reset');
-    log('  node oroboreo/utils/oreo-archive.js --list    # List all archives', 'reset');
+    log('  oro-archive           # Archive current session', 'reset');
+    log('  oro-archive --reset   # Archive and reset for next session', 'reset');
+    log('  oro-archive --list    # List all archives', 'reset');
     log('', 'reset');
   } else {
     const archivePath = archiveSession();
@@ -810,7 +810,7 @@ function main() {
       resetSessionFiles(archivePath);
     } else if (archivePath) {
       log('\nTo reset session files for next run, use:', 'cyan');
-      log('  node oroboreo/utils/oreo-archive.js --reset', 'yellow');
+      log('  oro-archive --reset', 'yellow');
       log('', 'reset');
     }
   }

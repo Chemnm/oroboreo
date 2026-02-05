@@ -299,10 +299,10 @@ async function main() {
     console.error('');
     console.error('Usage:');
     console.error('  1. Write your feedback in oroboreo/human-feedback.md');
-    console.error('  2. Run: node oroboreo/utils/oreo-feedback.js');
+    console.error('  2. Run: oro-feedback');
     console.error('');
     console.error('Or pass feedback directly:');
-    console.error('  node oroboreo/utils/oreo-feedback.js "The login button is broken"');
+    console.error('  oro-feedback "The login button is broken"');
     process.exit(1);
   }
 
@@ -498,7 +498,7 @@ After all tasks complete, the human should verify:
       console.log('===============================================================================');
       console.log('');
       console.log('Next step:');
-      console.log('  node oroboreo/utils/oreo-run.js');
+      console.log('  oro-run');
       console.log('');
     } else {
       console.error(`\n❌ Architect exited with code ${code}`);

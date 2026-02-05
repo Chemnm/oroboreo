@@ -303,9 +303,9 @@ async function main() {
     await compareWithCloudWatch();
   } else {
     log('Usage:', 'cyan');
-    log('  node oroboreo/utils/oreo-costs.js csv          # Export to CSV', 'reset');
-    log('  node oroboreo/utils/oreo-costs.js cloudwatch   # Compare with CloudWatch', 'reset');
-    log('  node oroboreo/utils/oreo-costs.js both         # Do both', 'reset');
+    log('  oro-costs csv          # Export to CSV', 'reset');
+    log('  oro-costs cloudwatch   # Compare with CloudWatch', 'reset');
+    log('  oro-costs both         # Do both', 'reset');
     log('', 'reset');
   }
 }

@@ -569,7 +569,7 @@ async function main() {
         }
 
         log('\nNext step:', 'bright');
-        log('  node oroboreo/utils/oreo-run.js\n', 'magenta');
+        log('  oro-run\n', 'magenta');
       }
     } else {
       log(`\nGeneration failed (exit code ${code})`, 'yellow');

@@ -543,7 +543,7 @@ async function main() {
   log('Next Steps:', 'cyan');
   log('  1. Review oroboreo/creme-filling.md (your project rules)', 'reset');
   log('  2. Add tasks to oroboreo/cookie-crumbs.md', 'reset');
-  log('  3. Run: node oroboreo/utils/oreo-run.js (to execute tasks)', 'reset');
+  log('  3. Run: oro-run (to execute tasks)', 'reset');
   log('\nWelcome to the Golden Loop!\n', 'magenta');
 
   rl.close();

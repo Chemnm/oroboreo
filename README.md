@@ -336,12 +336,12 @@ AWS_SECRET_ACCESS_KEY=...
 AWS_REGION=us-east-1
 ```
 
-### Option 2: Microsoft Foundry (Use Your Azure Credits)
+### Option 2: Microsoft Foundry (Use Your Azure Account)
 
 > 📚 **Official Guide**: See [Claude in Microsoft Foundry](https://platform.claude.com/docs/en/build-with-claude/claude-in-microsoft-foundry) for detailed setup.
 
 **Prerequisites:**
-- Active Azure subscription with AI credits
+- Active Azure subscription
 - Azure AI Foundry resource created
 - Claude model deployment (Opus, Sonnet, or Haiku)
 
