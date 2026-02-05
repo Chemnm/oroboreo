@@ -29,3 +29,6 @@ logs/
 *.tmp
 .temp/
 nul
+
+# Browser test screenshots
+tests/screenshots/

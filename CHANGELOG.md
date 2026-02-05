@@ -5,6 +5,15 @@ All notable changes to Oroboreo will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-01-30
+
+### Added
+- **Playwright Support:** Added `playwright` as optional dependency for browser automation tasks
+
+### Fixed
+- **Dependencies:** Moved `@anthropic-ai/claude-code` from `optionalDependencies` to `peerDependencies`
+  - NPM will now warn users if Claude Code CLI is not installed
+
 ## [1.0.1] - 2026-01-28
 
 ### Fixed
@@ -73,5 +82,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provider setup instructions (Bedrock & Anthropic)
 - Test organization guidelines
 
+[1.0.2]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.2
 [1.0.1]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.0

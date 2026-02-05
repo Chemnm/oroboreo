@@ -261,4 +261,137 @@ fetch(endpoint);
 
 ---
 
+## Browser Testing with Playwright
+
+Oroboreo supports autonomous browser testing using Playwright. This allows Claude to verify UI changes without human intervention.
+
+### Setup
+
+```bash
+# Install Playwright (optional dependency)
+npm install playwright
+
+# Install browser binaries (Chromium recommended)
+npx playwright install chromium
+```
+
+### Using browser-utils.js
+
+The `browser-utils.js` module provides utilities for autonomous UI testing:
+
+```javascript
+const { testUI, takeScreenshot, isPlaywrightInstalled } = require('./browser-utils');
+
+// Always check if Playwright is installed first
+if (!isPlaywrightInstalled()) {
+  console.log('Playwright not installed, skipping browser test');
+  process.exit(0);
+}
+
+// Run a browser test
+(async () => {
+  const result = await testUI('http://localhost:3000/login', async (page) => {
+    // Fill form
+    await page.fill('input[name="email"]', 'test@example.com');
+    await page.fill('input[name="password"]', 'password123');
+
+    // Click submit
+    await page.click('button[type="submit"]');
+
+    // Verify redirect to dashboard
+    await page.waitForURL('**/dashboard');
+  });
+
+  // Check for console errors
+  const consoleErrors = result.consoleLogs.filter(l => l.type === 'error');
+  if (consoleErrors.length > 0) {
+    console.error('Console errors detected:', consoleErrors);
+  }
+
+  process.exit(result.success ? 0 : 1);
+})();
+```
+
+### API Reference
+
+#### `testUI(url, testFn, options)`
+Main test runner with automatic browser setup/teardown.
+
+**Options:**
+- `headless: true` - Run without visible browser (default)
+- `captureConsole: true` - Capture console logs (default)
+- `screenshotOnError: true` - Screenshot on failure (default)
+- `timeout: 30000` - Test timeout in ms (default)
+
+**Returns:** `{ success, errors, consoleLogs, screenshots }`
+
+#### `takeScreenshot(page, name, options)`
+Take a screenshot during a test.
+
+```javascript
+await testUI('http://localhost:3000', async (page) => {
+  await takeScreenshot(page, 'homepage');
+  await page.click('#login');
+  await takeScreenshot(page, 'login-form');
+});
+```
+
+#### `isPlaywrightInstalled()`
+Check if Playwright is available before running tests.
+
+#### `verifyText(page, selector, expectedText)`
+Wait for element and verify its text content.
+
+### Best Practices for Browser Tests
+
+1. **Always check prerequisites**
+   ```javascript
+   if (!isPlaywrightInstalled()) {
+     console.log('Skipping: Playwright not installed');
+     process.exit(0);
+   }
+   ```
+
+2. **Use appropriate selectors**
+   - Prefer `data-testid` attributes: `[data-testid="submit-btn"]`
+   - Use semantic selectors: `button[type="submit"]`
+   - Avoid fragile selectors: `.btn-primary` (may change)
+
+3. **Handle async operations**
+   ```javascript
+   // Wait for navigation
+   await page.waitForURL('**/dashboard');
+
+   // Wait for element
+   await page.waitForSelector('.success-message');
+
+   // Wait for network idle
+   await page.waitForLoadState('networkidle');
+   ```
+
+4. **Capture evidence**
+   ```javascript
+   // Screenshot on important steps
+   await takeScreenshot(page, 'before-submit');
+   await page.click('#submit');
+   await takeScreenshot(page, 'after-submit');
+   ```
+
+5. **Check console errors**
+   ```javascript
+   const errors = result.consoleLogs.filter(l => l.type === 'error');
+   if (errors.length > 0) {
+     console.error('JavaScript errors found!');
+     process.exit(1);
+   }
+   ```
+
+### Screenshots
+
+Screenshots are saved to `tests/screenshots/` (gitignored). They include:
+- Error screenshots (automatic on test failure)
+- Manual screenshots via `takeScreenshot()`
+
+---
+
 🍪 **Built with Oroboreo - The Golden Loop**

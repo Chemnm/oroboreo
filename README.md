@@ -422,13 +422,14 @@ These rules are injected into every Claude Code instance, ensuring consistent be
 ### 🧪 Autonomous Testing & Verification
 
 **Playwright Browser Automation**
-- [ ] Built-in Playwright support for autonomous UI testing
-- [ ] Browser test utilities in `tests/reusable/browser-utils.js`
-- [ ] Auto-generate browser verification scripts from task descriptions
-- [ ] Console log capture and error detection
-- [ ] Screenshot and video evidence collection
+- [x] Built-in Playwright support for autonomous UI testing
+- [x] Browser test utilities in `tests/reusable/browser-utils.js`
+- [x] Auto-detect Playwright need and suggest installation
+- [x] Console log capture and error detection
+- [x] Screenshot evidence collection
 - [ ] Visual regression testing (compare before/after screenshots)
 - [ ] Accessibility testing integration (automated a11y checks)
+- [ ] Video recording for debugging
 
 **Why This Matters:** Eliminates manual UI testing by enabling Claude to verify its own changes. The agent can open browsers, click elements, test workflows, capture console errors, and collect evidence—all without human intervention. This closes the feedback loop and reduces dependency on human verification.
 

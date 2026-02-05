@@ -172,6 +172,33 @@ region = ${region}
   log('AWS credentials file created successfully', 'SUCCESS');
 }
 
+/**
+ * Check if a task may require Playwright for browser testing
+ * Warns user to install if needed but continues execution
+ * @param {Object} task - The task object with title and details
+ */
+function checkPlaywrightNeeded(task) {
+  const taskText = (task.title + ' ' + task.details).toLowerCase();
+
+  // Check if task mentions browser testing keywords
+  const needsBrowser = taskText.includes('browser') ||
+                       taskText.includes('playwright') ||
+                       taskText.includes('browser-utils') ||
+                       taskText.includes('ui test') ||
+                       taskText.includes('ui verification');
+
+  if (needsBrowser) {
+    try {
+      require.resolve('playwright');
+      log('Playwright detected - browser testing available', 'INFO');
+    } catch (e) {
+      log('This task may require Playwright for browser testing.', 'WARN');
+      log('Install with: npm install playwright && npx playwright install chromium', 'INFO');
+      log('Continuing without browser testing capability...', 'INFO');
+    }
+  }
+}
+
 function loadCostLog() {
   if (fs.existsSync(CONFIG.paths.costs)) {
     try {
@@ -761,6 +788,9 @@ async function main() {
     log(`Model: ${model.name}`, 'INFO');
     log(`Attempt: ${attempts + 1}/${CONFIG.maxRetriesPerTask}`, 'INFO');
     console.log('-------------------------------------------------------------------------------');
+
+    // 3.5 Check if Playwright is needed for this task
+    checkPlaywrightNeeded(task);
 
     // 4. Prepare prompt
     const prompt = constructPrompt(task);

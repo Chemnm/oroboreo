@@ -1,0 +1,278 @@
+/**
+ * Browser Test Utilities for Oroboreo
+ *
+ * Provides autonomous browser testing capabilities using Playwright.
+ * Claude can use these utilities to verify UI changes without human intervention.
+ *
+ * Usage:
+ *   const { testUI, takeScreenshot, isPlaywrightInstalled } = require('./browser-utils');
+ *
+ *   // Check if Playwright is available
+ *   if (!isPlaywrightInstalled()) {
+ *     console.log('Playwright not installed, skipping browser test');
+ *     process.exit(0);
+ *   }
+ *
+ *   // Run a browser test
+ *   const result = await testUI('http://localhost:3000', async (page) => {
+ *     await page.click('#login-button');
+ *     await page.waitForSelector('.dashboard');
+ *   });
+ *
+ *   process.exit(result.success ? 0 : 1);
+ *
+ * @author Oroboreo - The Golden Loop
+ * @version 1.0.0
+ */
+
+const path = require('path');
+const fs = require('fs');
+
+// Configuration
+const SCREENSHOTS_DIR = path.join(__dirname, '..', 'screenshots');
+const DEFAULT_TIMEOUT = 30000;
+
+/**
+ * Check if Playwright is installed
+ * @returns {boolean} True if Playwright is available
+ */
+function isPlaywrightInstalled() {
+  try {
+    require.resolve('playwright');
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Run a browser test with automatic setup/teardown
+ *
+ * @param {string} url - URL to navigate to
+ * @param {Function} testFn - Test function receiving (page, context)
+ * @param {Object} options - Optional configuration
+ * @param {boolean} options.headless - Run without visible browser (default: true)
+ * @param {boolean} options.screenshotOnError - Capture screenshot on failure (default: true)
+ * @param {boolean} options.captureConsole - Capture console logs (default: true)
+ * @param {number} options.timeout - Test timeout in ms (default: 30000)
+ * @returns {Object} Result object: { success, errors, consoleLogs, screenshots }
+ *
+ * @example
+ * const result = await testUI('http://localhost:3000/login', async (page) => {
+ *   await page.fill('input[name="email"]', 'test@example.com');
+ *   await page.fill('input[name="password"]', 'password123');
+ *   await page.click('button[type="submit"]');
+ *   await page.waitForURL('dashboard');
+ * });
+ */
+async function testUI(url, testFn, options = {}) {
+  // Check if Playwright is installed
+  if (!isPlaywrightInstalled()) {
+    console.error('ERROR: Playwright is not installed.');
+    console.error('Install with: npm install playwright && npx playwright install chromium');
+    return {
+      success: false,
+      errors: ['Playwright not installed'],
+      consoleLogs: [],
+      screenshots: []
+    };
+  }
+
+  const {
+    headless = true,
+    screenshotOnError = true,
+    captureConsole = true,
+    timeout = DEFAULT_TIMEOUT
+  } = options;
+
+  // Ensure screenshots directory exists
+  if (!fs.existsSync(SCREENSHOTS_DIR)) {
+    fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
+  }
+
+  const result = {
+    success: false,
+    errors: [],
+    consoleLogs: [],
+    screenshots: []
+  };
+
+  // Dynamic import of Playwright
+  const { chromium } = require('playwright');
+  let browser;
+
+  try {
+    console.log(`Browser test starting: ${url}`);
+    console.log(`Options: headless=${headless}, timeout=${timeout}ms`);
+
+    browser = await chromium.launch({ headless });
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    // Set timeout
+    page.setDefaultTimeout(timeout);
+
+    // Capture console logs
+    if (captureConsole) {
+      page.on('console', msg => {
+        const entry = {
+          type: msg.type(),
+          text: msg.text(),
+          timestamp: new Date().toISOString()
+        };
+        result.consoleLogs.push(entry);
+
+        // Log errors to stdout for visibility
+        if (msg.type() === 'error') {
+          console.log(`CONSOLE ERROR: ${msg.text()}`);
+        }
+      });
+
+      // Capture uncaught exceptions
+      page.on('pageerror', error => {
+        const entry = {
+          type: 'exception',
+          text: error.message,
+          timestamp: new Date().toISOString()
+        };
+        result.consoleLogs.push(entry);
+        console.log(`PAGE ERROR: ${error.message}`);
+      });
+    }
+
+    // Navigate to URL
+    console.log(`Navigating to: ${url}`);
+    await page.goto(url, { waitUntil: 'networkidle' });
+
+    // Run the test function
+    await testFn(page, context);
+
+    result.success = true;
+    console.log('Browser test PASSED');
+
+  } catch (error) {
+    result.errors.push(error.message);
+    console.error(`Browser test FAILED: ${error.message}`);
+
+    // Screenshot on error
+    if (screenshotOnError && browser) {
+      try {
+        const contexts = browser.contexts();
+        if (contexts.length > 0) {
+          const pages = contexts[0].pages();
+          if (pages.length > 0) {
+            const timestamp = Date.now();
+            const screenshotPath = path.join(SCREENSHOTS_DIR, `error-${timestamp}.png`);
+            await pages[0].screenshot({ path: screenshotPath, fullPage: true });
+            result.screenshots.push(screenshotPath);
+            console.log(`Error screenshot saved: ${screenshotPath}`);
+          }
+        }
+      } catch (screenshotError) {
+        console.error(`Failed to capture error screenshot: ${screenshotError.message}`);
+      }
+    }
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+
+  // Summary
+  console.log('\n--- Browser Test Summary ---');
+  console.log(`Success: ${result.success}`);
+  console.log(`Errors: ${result.errors.length}`);
+  console.log(`Console logs: ${result.consoleLogs.length}`);
+  console.log(`Screenshots: ${result.screenshots.length}`);
+
+  // Report console errors
+  const consoleErrors = result.consoleLogs.filter(l => l.type === 'error' || l.type === 'exception');
+  if (consoleErrors.length > 0) {
+    console.log(`\nConsole errors detected (${consoleErrors.length}):`);
+    consoleErrors.forEach(e => console.log(`  - ${e.text}`));
+  }
+
+  return result;
+}
+
+/**
+ * Take a screenshot with automatic naming
+ *
+ * @param {Page} page - Playwright page object
+ * @param {string} name - Screenshot name (without extension)
+ * @param {Object} options - Screenshot options
+ * @param {boolean} options.fullPage - Capture full page (default: true)
+ * @returns {string} Path to saved screenshot
+ *
+ * @example
+ * await takeScreenshot(page, 'login-form');
+ * await takeScreenshot(page, 'dashboard', { fullPage: false });
+ */
+async function takeScreenshot(page, name, options = {}) {
+  const { fullPage = true } = options;
+
+  if (!fs.existsSync(SCREENSHOTS_DIR)) {
+    fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
+  }
+
+  const timestamp = Date.now();
+  const screenshotPath = path.join(SCREENSHOTS_DIR, `${name}-${timestamp}.png`);
+
+  await page.screenshot({ path: screenshotPath, fullPage });
+  console.log(`Screenshot saved: ${screenshotPath}`);
+
+  return screenshotPath;
+}
+
+/**
+ * Wait for element and verify its text content
+ *
+ * @param {Page} page - Playwright page object
+ * @param {string} selector - CSS selector
+ * @param {string} expectedText - Expected text content
+ * @param {Object} options - Options
+ * @param {number} options.timeout - Timeout in ms (default: 5000)
+ * @returns {boolean} True if element contains expected text
+ */
+async function verifyText(page, selector, expectedText, options = {}) {
+  const { timeout = 5000 } = options;
+
+  try {
+    await page.waitForSelector(selector, { timeout });
+    const actualText = await page.textContent(selector);
+    const matches = actualText && actualText.includes(expectedText);
+
+    if (matches) {
+      console.log(`Verified: "${selector}" contains "${expectedText}"`);
+    } else {
+      console.log(`Mismatch: "${selector}" has "${actualText}", expected "${expectedText}"`);
+    }
+
+    return matches;
+  } catch (error) {
+    console.error(`verifyText failed: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Check for JavaScript errors in console logs
+ *
+ * @param {Array} consoleLogs - Array of console log entries from testUI result
+ * @returns {Array} Array of error entries
+ */
+function getConsoleErrors(consoleLogs) {
+  return consoleLogs.filter(log =>
+    log.type === 'error' ||
+    log.type === 'exception'
+  );
+}
+
+module.exports = {
+  testUI,
+  takeScreenshot,
+  verifyText,
+  isPlaywrightInstalled,
+  getConsoleErrors,
+  SCREENSHOTS_DIR
+};

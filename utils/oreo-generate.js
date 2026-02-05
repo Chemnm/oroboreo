@@ -306,7 +306,31 @@ Create a detailed task list and write it to \`oroboreo/cookie-crumbs.md\`.
    - **Session tests** (\`oroboreo/tests/\`): Feature-specific, will be archived after session
      - Examples: verify-task-36-fix.js, test-dashboard-redesign.js
 
-6. **Human UI Verification Section**
+6. **Browser Testing (for UI Verification)**
+   - For UI tasks, use \`oroboreo/tests/reusable/browser-utils.js\` for autonomous browser testing
+   - Browser tests run headless and capture console errors automatically
+   - Always check \`isPlaywrightInstalled()\` before using browser features
+   - Example browser verification script:
+     \`\`\`javascript
+     // tests/verify-login-ui.js
+     const { testUI, isPlaywrightInstalled } = require('./reusable/browser-utils');
+
+     if (!isPlaywrightInstalled()) {
+       console.log('Playwright not installed, skipping browser test');
+       process.exit(0);
+     }
+
+     (async () => {
+       const result = await testUI('http://localhost:3000/login', async (page) => {
+         await page.fill('input[name="email"]', 'test@example.com');
+         await page.click('button[type="submit"]');
+         await page.waitForSelector('.dashboard');
+       });
+       process.exit(result.success ? 0 : 1);
+     })();
+     \`\`\`
+
+7. **Human UI Verification Section**
    End with a checklist for manual verification that the HUMAN will perform after all tasks complete.
 
 ### Output Format
@@ -314,14 +338,16 @@ Create a detailed task list and write it to \`oroboreo/cookie-crumbs.md\`.
 Write directly to \`oroboreo/cookie-crumbs.md\` using clear markdown.
 
 **CRITICAL CONSTRAINTS:**
-- **Verification MUST use scripts** - Claude cannot open browsers or manually test UI
+- **Verification MUST use scripts** - Claude cannot manually interact with browsers
 - **Check \`tests/reusable/\` before creating new tests** - Don't duplicate existing verification scripts
-- Verification should use: test scripts in tests/, build commands, CLI tools, curl requests, or log inspection
+- Verification should use: test scripts, build commands, CLI tools, curl requests, log inspection, or **browser-utils.js for UI testing**
 - Examples of GOOD verification:
   - "Run \`node oroboreo/tests/reusable/verify-auth.js\`" (reuse existing)
   - "Execute \`node oroboreo/tests/verify-task-5-login.js\`" (new session-specific test)
+  - "Run \`node oroboreo/tests/verify-login-ui.js\`" (browser test using browser-utils.js)
   - "Check logs show correct output"
-- Examples of BAD verification: "Open browser and check UI", "Manually test the button", "View the page"
+- Examples of BAD verification: "Open browser and manually check UI", "Manually test the button", "Visually inspect the page"
+- **For UI verification:** Use browser-utils.js to create automated browser tests that run headless
 - Create **reusable tests** for generic functionality, **session tests** for feature-specific verification
 - Each task should be achievable in one focused session
 - If a task feels too large, break it into smaller sub-tasks

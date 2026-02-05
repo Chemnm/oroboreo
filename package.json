@@ -1,6 +1,6 @@
 {
   "name": "@oroboreo/cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "The Golden Loop - Self-improving, cost-optimized autonomous development engine",
   "main": "utils/oreo-run.js",
   "bin": {
@@ -52,8 +52,11 @@
     "@aws-sdk/client-cloudwatch": "^3.700.0",
     "@aws-sdk/client-bedrock-runtime": "^3.700.0"
   },
+  "peerDependencies": {
+    "@anthropic-ai/claude-code": ">=1.0.0"
+  },
   "optionalDependencies": {
-    "@anthropic-ai/claude-code": "^1.0.0"
+    "playwright": "^1.40.0"
   },
   "engines": {
     "node": ">=18.0.0"

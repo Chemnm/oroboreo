@@ -373,10 +373,17 @@ Use this format for each task:
 
 **VERIFICATION CONSTRAINTS**
 
-- Verification MUST use: test scripts, build commands, CLI tools, curl requests, or log inspection
+- Verification MUST use: test scripts, build commands, CLI tools, curl requests, log inspection, or **browser-utils.js**
 - Examples of GOOD verification: "Run \`npm test\`", "Execute \`node scripts/verify-fix.js\`", "Check logs show correct output"
-- Examples of BAD verification: "Open browser and check UI", "Manually test the button", "View the page"
-- All verification should be executable by Claude Code (no GUI access)
+- Examples of BAD verification: "Open browser and manually check UI", "Manually test the button", "Visually inspect the page"
+- All verification should be executable by Claude Code (no manual GUI interaction)
+
+**BROWSER TESTING (for UI fixes)**
+
+- For UI-related fixes, use \`oroboreo/tests/reusable/browser-utils.js\` for autonomous browser testing
+- Browser tests run headless and can verify UI changes without human intervention
+- Always check \`isPlaywrightInstalled()\` before generating browser tests
+- Example: "Run \`node oroboreo/tests/verify-button-fix.js\`" (uses browser-utils.js to test UI)
 
 **IMPORTANT**
 
