@@ -75,12 +75,12 @@ const CONFIG = {
   // Models (will be set after loading env)
   models: null,
 
-  // File Paths (Oreo Theme)
+  // File Paths (Oreo Theme) - use process.cwd() for user files
   paths: {
-    ...getPaths(__dirname),                               // Shared paths
-    progress: path.join(__dirname, '..', 'progress.txt'),       // Session memory
-    log: path.join(__dirname, '..', 'oreo-execution.log'),      // Execution log
-    prompt: path.join(__dirname, '..', '.oreo-prompt.txt')      // Temp prompt file
+    ...getPaths(),                                              // Shared paths from user's project
+    progress: path.join(process.cwd(), 'oroboreo', 'progress.txt'),       // Session memory
+    log: path.join(process.cwd(), 'oroboreo', 'oreo-execution.log'),      // Execution log
+    prompt: path.join(process.cwd(), 'oroboreo', '.oreo-prompt.txt')      // Temp prompt file
   },
 
   // Git Settings

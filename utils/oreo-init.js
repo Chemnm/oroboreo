@@ -56,8 +56,8 @@ const CONFIG = {
   maxOutputTokens: null,
   thinkingBudget: null,
   paths: {
-    ...getPaths(__dirname),
-    prompt: path.join(__dirname, '.init-prompt.txt')
+    ...getPaths(),                                               // Shared paths from user's project
+    prompt: path.join(process.cwd(), 'oroboreo', '.init-prompt.txt')
   }
 };
 
@@ -361,11 +361,11 @@ async function main() {
   log('OROBOREO INITIALIZATION', 'bright');
   log('===============================================================================\n', 'yellow');
 
-  const oroborosDir = __dirname;
-  const projectRoot = path.join(oroborosDir, '..', '..');
+  const projectRoot = process.cwd();
+  const oroborosDir = path.join(projectRoot, 'oroboreo');
 
   log(`Project Root: ${projectRoot}`, 'cyan');
-  log(`OroboreoDir: ${oroborosDir}\n`, 'cyan');
+  log(`Oroboreo Dir: ${oroborosDir}\n`, 'cyan');
 
   // Load AWS credentials if available
   const hasEnv = loadEnv();

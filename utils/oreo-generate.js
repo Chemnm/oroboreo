@@ -67,8 +67,8 @@ const CONFIG = {
   maxOutputTokens: null,
   thinkingBudget: null,
   paths: {
-    ...getPaths(__dirname),
-    prompt: path.join(__dirname, '.generate-prompt.txt')
+    ...getPaths(),                                               // Shared paths from user's project
+    prompt: path.join(process.cwd(), 'oroboreo', '.generate-prompt.txt')
   }
 };
 
@@ -181,7 +181,7 @@ function archiveExistingTasks() {
   fs.copyFileSync(CONFIG.paths.tasks, path.join(archivePath, 'cookie-crumbs.md'));
 
   // Also copy progress.txt if it exists
-  const progressPath = path.join(__dirname, 'progress.txt');
+  const progressPath = path.join(process.cwd(), 'oroboreo', 'progress.txt');
   if (fs.existsSync(progressPath)) {
     fs.copyFileSync(progressPath, path.join(archivePath, 'progress.txt'));
   }

@@ -69,9 +69,8 @@ const CONFIG = {
 
   // File Paths (Oreo Theme)
   paths: {
-    ...getPaths(__dirname),                                      // Shared paths
-    feedback: path.join(__dirname, '..', 'human-feedback.md'),   // Human input
-    prompt: path.join(__dirname, '.architect-prompt.txt')        // Temp prompt
+    ...getPaths(),                                               // Shared paths (includes feedback)
+    prompt: path.join(process.cwd(), 'oroboreo', '.architect-prompt.txt')  // Temp prompt
   }
 };
 

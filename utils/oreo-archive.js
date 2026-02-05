@@ -44,10 +44,10 @@ const { execSync } = require('child_process');
 // CONFIGURATION
 // ============================================================================
 
-// __dirname is utils/, so go up one level to oroboreo/
-const OROBOREO_DIR = path.join(__dirname, '..');
+// Use process.cwd() for user's project directory (works with NPM install)
+const OROBOREO_DIR = path.join(process.cwd(), 'oroboreo');
 const ARCHIVE_DIR = path.join(OROBOREO_DIR, 'archives');
-const PROJECT_ROOT = path.join(OROBOREO_DIR, '..');
+const PROJECT_ROOT = process.cwd();
 
 // Files to archive (tests/ handled separately with smart archival)
 const FILES_TO_ARCHIVE = [

@@ -5,6 +5,14 @@ All notable changes to Oroboreo will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-02-05
+
+### Fixed
+- **NPM Path Resolution:** Fixed ALL path references to use `process.cwd()` instead of `__dirname`
+  - All user files (feedback, progress, logs, prompts, archives) now correctly resolve to user's project
+  - Affects: `oreo-feedback.js`, `oreo-generate.js`, `oreo-init.js`, `oreo-run.js`, `oreo-archive.js`
+  - Note: `__dirname` is still correctly used for script files (run-with-prompt.bat/sh) that ship with the package
+
 ## [1.0.4] - 2026-02-05
 
 ### Fixed
@@ -99,6 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provider setup instructions (Bedrock & Anthropic)
 - Test organization guidelines
 
+[1.0.5]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.5
 [1.0.4]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.4
 [1.0.3]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.3
 [1.0.2]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.2
