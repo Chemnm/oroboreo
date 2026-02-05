@@ -5,6 +5,11 @@ All notable changes to Oroboreo will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-02-05
+
+### Changed
+- **CLI Output:** Updated all help messages and "next step" output to use `oro-*` commands instead of `node oroboreo/utils/...` paths
+
 ## [1.0.6] - 2026-02-05
 
 ### Fixed
@@ -113,6 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provider setup instructions (Bedrock & Anthropic)
 - Test organization guidelines
 
+[1.0.7]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.7
 [1.0.6]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.6
 [1.0.5]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.5
 [1.0.4]: https://github.com/Chemnm/oroboreo/releases/tag/v1.0.4

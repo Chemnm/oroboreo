@@ -51,7 +51,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { getModelConfig, clearProviderEnv, getPaths, COLORS, COST_FACTORS } = require('./oreo-config.js');
+const { getModelConfig, clearProviderEnv, getFoundryResource, hasFoundryConfig, getPaths, COLORS, COST_FACTORS } = require('./oreo-config.js');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -395,8 +395,8 @@ async function main() {
       log('ANTHROPIC_FOUNDRY_API_KEY not set! Please configure oroboreo/.env', 'yellow');
       process.exit(1);
     }
-    if (!process.env.ANTHROPIC_FOUNDRY_RESOURCE && !process.env.ANTHROPIC_FOUNDRY_BASE_URL) {
-      log('ANTHROPIC_FOUNDRY_RESOURCE or ANTHROPIC_FOUNDRY_BASE_URL not set! Please configure oroboreo/.env', 'yellow');
+    if (!hasFoundryConfig()) {
+      log('No Foundry resource configured! Set ANTHROPIC_FOUNDRY_RESOURCE or per-model resources (ANTHROPIC_FOUNDRY_RESOURCE_OPUS, etc.)', 'yellow');
       process.exit(1);
     }
     process.env.CLAUDE_CODE_USE_FOUNDRY = '1';
@@ -495,17 +495,21 @@ async function main() {
 
   } else if (provider === 'foundry') {
     // Microsoft Foundry - Set Foundry-specific vars
+    // oreo-generate always uses Opus
+    const foundryConfig = getFoundryResource('OPUS');
+
     env.ANTHROPIC_MODEL = CONFIG.model.id;
     env.CLAUDE_CODE_USE_FOUNDRY = '1';
     env.ANTHROPIC_FOUNDRY_API_KEY = process.env.ANTHROPIC_FOUNDRY_API_KEY;
-    // Use resource name or base URL (one or the other)
-    if (process.env.ANTHROPIC_FOUNDRY_RESOURCE) {
-      env.ANTHROPIC_FOUNDRY_RESOURCE = process.env.ANTHROPIC_FOUNDRY_RESOURCE;
+
+    // Use model-specific resource/URL (with fallback to single resource)
+    if (foundryConfig.resource) {
+      env.ANTHROPIC_FOUNDRY_RESOURCE = foundryConfig.resource;
     }
-    if (process.env.ANTHROPIC_FOUNDRY_BASE_URL) {
-      env.ANTHROPIC_FOUNDRY_BASE_URL = process.env.ANTHROPIC_FOUNDRY_BASE_URL;
+    if (foundryConfig.baseUrl) {
+      env.ANTHROPIC_FOUNDRY_BASE_URL = foundryConfig.baseUrl;
     }
-    log('Spawning via Microsoft Foundry...\n');
+    log(`Spawning via Microsoft Foundry (resource: ${foundryConfig.resource || foundryConfig.baseUrl})...\n`);
 
   } else if (provider === 'anthropic') {
     // Anthropic API - Set ONLY API key (no ANTHROPIC_MODEL)

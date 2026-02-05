@@ -54,7 +54,7 @@
 const { spawn, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { getModelConfig, clearProviderEnv, getPaths, COST_FACTORS } = require('./oreo-config.js');
+const { getModelConfig, clearProviderEnv, getFoundryResource, hasFoundryConfig, getPaths, COST_FACTORS } = require('./oreo-config.js');
 
 // ============================================================================
 // CONFIGURATION
@@ -711,8 +711,8 @@ async function main() {
       log('ANTHROPIC_FOUNDRY_API_KEY not set! Please configure oroboreo/.env', 'ERROR');
       process.exit(1);
     }
-    if (!process.env.ANTHROPIC_FOUNDRY_RESOURCE && !process.env.ANTHROPIC_FOUNDRY_BASE_URL) {
-      log('ANTHROPIC_FOUNDRY_RESOURCE or ANTHROPIC_FOUNDRY_BASE_URL not set! Please configure oroboreo/.env', 'ERROR');
+    if (!hasFoundryConfig()) {
+      log('No Foundry resource configured! Set ANTHROPIC_FOUNDRY_RESOURCE or per-model resources (ANTHROPIC_FOUNDRY_RESOURCE_OPUS, etc.)', 'ERROR');
       process.exit(1);
     }
     process.env.CLAUDE_CODE_USE_FOUNDRY = '1';
@@ -829,8 +829,16 @@ async function main() {
       AWS_REGION: process.env.AWS_REGION,
       ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
       ANTHROPIC_FOUNDRY_API_KEY: process.env.ANTHROPIC_FOUNDRY_API_KEY,
+      // Foundry: single resource (legacy)
       ANTHROPIC_FOUNDRY_RESOURCE: process.env.ANTHROPIC_FOUNDRY_RESOURCE,
-      ANTHROPIC_FOUNDRY_BASE_URL: process.env.ANTHROPIC_FOUNDRY_BASE_URL
+      ANTHROPIC_FOUNDRY_BASE_URL: process.env.ANTHROPIC_FOUNDRY_BASE_URL,
+      // Foundry: per-model resources
+      ANTHROPIC_FOUNDRY_RESOURCE_OPUS: process.env.ANTHROPIC_FOUNDRY_RESOURCE_OPUS,
+      ANTHROPIC_FOUNDRY_RESOURCE_SONNET: process.env.ANTHROPIC_FOUNDRY_RESOURCE_SONNET,
+      ANTHROPIC_FOUNDRY_RESOURCE_HAIKU: process.env.ANTHROPIC_FOUNDRY_RESOURCE_HAIKU,
+      ANTHROPIC_FOUNDRY_BASE_URL_OPUS: process.env.ANTHROPIC_FOUNDRY_BASE_URL_OPUS,
+      ANTHROPIC_FOUNDRY_BASE_URL_SONNET: process.env.ANTHROPIC_FOUNDRY_BASE_URL_SONNET,
+      ANTHROPIC_FOUNDRY_BASE_URL_HAIKU: process.env.ANTHROPIC_FOUNDRY_BASE_URL_HAIKU
     };
 
     // Clear ALL provider environment variables first
@@ -857,17 +865,22 @@ async function main() {
 
     } else if (provider === 'foundry') {
       // Microsoft Foundry - Set Foundry-specific vars
+      // Determine which model tier we're using (OPUS, SONNET, or HAIKU)
+      const modelKey = Object.keys(CONFIG.models).find(k => CONFIG.models[k] === model) || 'HAIKU';
+      const foundryConfig = getFoundryResource(modelKey);
+
       env.ANTHROPIC_MODEL = model.id;
       env.CLAUDE_CODE_USE_FOUNDRY = '1';
       env.ANTHROPIC_FOUNDRY_API_KEY = savedCredentials.ANTHROPIC_FOUNDRY_API_KEY;
-      // Use resource name or base URL (one or the other)
-      if (savedCredentials.ANTHROPIC_FOUNDRY_RESOURCE) {
-        env.ANTHROPIC_FOUNDRY_RESOURCE = savedCredentials.ANTHROPIC_FOUNDRY_RESOURCE;
+
+      // Use model-specific resource/URL (with fallback to single resource)
+      if (foundryConfig.resource) {
+        env.ANTHROPIC_FOUNDRY_RESOURCE = foundryConfig.resource;
       }
-      if (savedCredentials.ANTHROPIC_FOUNDRY_BASE_URL) {
-        env.ANTHROPIC_FOUNDRY_BASE_URL = savedCredentials.ANTHROPIC_FOUNDRY_BASE_URL;
+      if (foundryConfig.baseUrl) {
+        env.ANTHROPIC_FOUNDRY_BASE_URL = foundryConfig.baseUrl;
       }
-      log(`Using Microsoft Foundry with model: ${model.id}`, 'INFO');
+      log(`Using Microsoft Foundry with model: ${model.id} (resource: ${foundryConfig.resource || foundryConfig.baseUrl})`, 'INFO');
 
     } else if (provider === 'anthropic') {
       // Anthropic API - Set ONLY API key (no ANTHROPIC_MODEL)

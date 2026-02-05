@@ -111,13 +111,55 @@ function clearProviderEnv() {
   // Anthropic API variables
   delete process.env.ANTHROPIC_API_KEY;
 
-  // Microsoft Foundry variables
+  // Microsoft Foundry variables (single resource - legacy)
   delete process.env.ANTHROPIC_FOUNDRY_API_KEY;
   delete process.env.ANTHROPIC_FOUNDRY_RESOURCE;
   delete process.env.ANTHROPIC_FOUNDRY_BASE_URL;
 
+  // Microsoft Foundry variables (per-model resources)
+  delete process.env.ANTHROPIC_FOUNDRY_RESOURCE_OPUS;
+  delete process.env.ANTHROPIC_FOUNDRY_RESOURCE_SONNET;
+  delete process.env.ANTHROPIC_FOUNDRY_RESOURCE_HAIKU;
+  delete process.env.ANTHROPIC_FOUNDRY_BASE_URL_OPUS;
+  delete process.env.ANTHROPIC_FOUNDRY_BASE_URL_SONNET;
+  delete process.env.ANTHROPIC_FOUNDRY_BASE_URL_HAIKU;
+
   // Shared variables that can cause conflicts
   delete process.env.ANTHROPIC_MODEL;
+}
+
+/**
+ * Returns the Foundry resource/URL for a specific model
+ * Supports per-model resources with fallback to single resource
+ * @param {string} modelName - 'OPUS', 'SONNET', or 'HAIKU'
+ * @returns {Object} { resource, baseUrl } - The resource name or base URL for the model
+ */
+function getFoundryResource(modelName) {
+  const resourceKey = `ANTHROPIC_FOUNDRY_RESOURCE_${modelName}`;
+  const urlKey = `ANTHROPIC_FOUNDRY_BASE_URL_${modelName}`;
+
+  return {
+    resource: process.env[resourceKey] || process.env.ANTHROPIC_FOUNDRY_RESOURCE,
+    baseUrl: process.env[urlKey] || process.env.ANTHROPIC_FOUNDRY_BASE_URL
+  };
+}
+
+/**
+ * Checks if Foundry is properly configured (at least one resource available)
+ * @returns {boolean} True if Foundry has valid configuration
+ */
+function hasFoundryConfig() {
+  // Check for single resource (legacy)
+  if (process.env.ANTHROPIC_FOUNDRY_RESOURCE || process.env.ANTHROPIC_FOUNDRY_BASE_URL) {
+    return true;
+  }
+  // Check for any per-model resource
+  if (process.env.ANTHROPIC_FOUNDRY_RESOURCE_OPUS || process.env.ANTHROPIC_FOUNDRY_BASE_URL_OPUS ||
+      process.env.ANTHROPIC_FOUNDRY_RESOURCE_SONNET || process.env.ANTHROPIC_FOUNDRY_BASE_URL_SONNET ||
+      process.env.ANTHROPIC_FOUNDRY_RESOURCE_HAIKU || process.env.ANTHROPIC_FOUNDRY_BASE_URL_HAIKU) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -267,6 +309,8 @@ module.exports = {
   FOUNDRY_MODELS,
   getModelConfig,
   clearProviderEnv,
+  getFoundryResource,
+  hasFoundryConfig,
   getPaths,
   COLORS,
   COST_FACTORS,
