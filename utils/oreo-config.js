@@ -62,6 +62,36 @@ const ANTHROPIC_MODELS = {
   }
 };
 
+// Microsoft Foundry Model IDs (for Azure AI Foundry)
+// Uses @anthropic-ai/foundry-sdk package
+// Docs: https://platform.claude.com/docs/en/build-with-claude/claude-in-microsoft-foundry
+const FOUNDRY_MODELS = {
+  OPUS: {
+    id: 'claude-opus-4-5',
+    name: 'Claude Opus 4.5',
+    inputCost: 5.0,
+    outputCost: 25.0,
+    maxOutput: 100000,
+    maxThinking: 32000
+  },
+  SONNET: {
+    id: 'claude-sonnet-4-5',
+    name: 'Claude Sonnet 4.5',
+    inputCost: 3.0,
+    outputCost: 15.0,
+    maxOutput: 20000,
+    maxThinking: 0
+  },
+  HAIKU: {
+    id: 'claude-haiku-4-5',
+    name: 'Claude Haiku 4.5',
+    inputCost: 1.0,
+    outputCost: 5.0,
+    maxOutput: 8192,
+    maxThinking: 0
+  }
+};
+
 // ============================================================================
 // PROVIDER-AWARE MODEL CONFIGURATION
 // ============================================================================
@@ -81,20 +111,31 @@ function clearProviderEnv() {
   // Anthropic API variables
   delete process.env.ANTHROPIC_API_KEY;
 
+  // Microsoft Foundry variables
+  delete process.env.ANTHROPIC_FOUNDRY_API_KEY;
+  delete process.env.ANTHROPIC_FOUNDRY_RESOURCE;
+  delete process.env.ANTHROPIC_FOUNDRY_BASE_URL;
+
   // Shared variables that can cause conflicts
   delete process.env.ANTHROPIC_MODEL;
 }
 
 /**
  * Returns the appropriate model configuration based on AI_PROVIDER env var
- * @returns {Object} MODELS object (Bedrock, Anthropic API, or Subscription)
+ * @returns {Object} MODELS object (Bedrock, Anthropic API, Foundry, or Subscription)
  */
 function getModelConfig() {
   const provider = (process.env.AI_PROVIDER || 'subscription').toLowerCase();
 
-  // Both 'anthropic' and 'subscription' use the same model aliases
-  // The difference is in authentication (API key vs. claude.ai account)
-  return (provider === 'bedrock') ? MODELS : ANTHROPIC_MODELS;
+  if (provider === 'bedrock') {
+    return MODELS;
+  } else if (provider === 'foundry') {
+    return FOUNDRY_MODELS;
+  } else {
+    // Both 'anthropic' and 'subscription' use the same model aliases
+    // The difference is in authentication (API key vs. claude.ai account)
+    return ANTHROPIC_MODELS;
+  }
 }
 
 // ============================================================================
@@ -223,6 +264,7 @@ See \`oroboreo/archives/{archiveName}\` for full session logs.
 module.exports = {
   MODELS,
   ANTHROPIC_MODELS,
+  FOUNDRY_MODELS,
   getModelConfig,
   clearProviderEnv,
   getPaths,

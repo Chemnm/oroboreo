@@ -336,7 +336,35 @@ AWS_SECRET_ACCESS_KEY=...
 AWS_REGION=us-east-1
 ```
 
-### Option 2: Anthropic API (Claude Code Subscription)
+### Option 2: Microsoft Foundry (Use Your Azure Credits)
+
+> 📚 **Official Guide**: See [Claude in Microsoft Foundry](https://platform.claude.com/docs/en/build-with-claude/claude-in-microsoft-foundry) for detailed setup.
+
+**Prerequisites:**
+- Active Azure subscription with AI credits
+- Azure AI Foundry resource created
+- Claude model deployment (Opus, Sonnet, or Haiku)
+
+**Configuration:**
+```bash
+# Copy the example and fill in your credentials
+cd oroboreo
+cp .env.example .env
+
+# Edit .env:
+AI_PROVIDER=foundry
+ANTHROPIC_FOUNDRY_API_KEY=your-azure-api-key
+ANTHROPIC_FOUNDRY_RESOURCE=your-foundry-resource-name
+```
+
+**Setup Steps:**
+1. Go to [Azure AI Foundry](https://ai.azure.com/)
+2. Create or select a Foundry resource
+3. Navigate to **Models + endpoints** → **Deploy model** → **Deploy base model**
+4. Search for and deploy a Claude model (e.g., `claude-sonnet-4-5`)
+5. Copy the API key from **Keys and Endpoint** section
+
+### Option 3: Anthropic API (Pay-As-You-Go)
 
 **Prerequisites:**
 - Anthropic API account
@@ -353,6 +381,21 @@ AI_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
+### Option 4: Claude Code Subscription (Simplest Setup)
+
+**Prerequisites:**
+- Claude Pro or Team subscription at https://claude.ai/
+
+**Configuration:**
+```bash
+# One-time login
+npx @anthropic-ai/claude-code login
+
+# Edit .env:
+AI_PROVIDER=subscription
+# No API key needed!
+```
+
 ### Model Configuration (Automatic)
 Oroboreo automatically uses the correct model IDs based on your provider:
 
@@ -362,7 +405,7 @@ Oroboreo automatically uses the correct model IDs based on your provider:
 | **Sonnet 4.5** | $3/$15 | Complex tasks `[COMPLEX]` |
 | **Haiku 4.5** | $1/$5 | Simple tasks `[SIMPLE]` |
 
-**Note:** Costs are identical for both providers.
+**Note:** Costs are identical across all providers (Bedrock, Foundry, Anthropic API).
 
 ---
 

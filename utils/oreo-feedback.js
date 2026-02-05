@@ -255,6 +255,17 @@ async function main() {
     }
     process.env.CLAUDE_CODE_USE_BEDROCK = '1';
     process.env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+  } else if (provider === 'foundry') {
+    // Validate Microsoft Foundry credentials
+    if (!process.env.ANTHROPIC_FOUNDRY_API_KEY) {
+      console.error('❌ ANTHROPIC_FOUNDRY_API_KEY not set! Please configure oroboreo/.env');
+      process.exit(1);
+    }
+    if (!process.env.ANTHROPIC_FOUNDRY_RESOURCE && !process.env.ANTHROPIC_FOUNDRY_BASE_URL) {
+      console.error('❌ ANTHROPIC_FOUNDRY_RESOURCE or ANTHROPIC_FOUNDRY_BASE_URL not set! Please configure oroboreo/.env');
+      process.exit(1);
+    }
+    process.env.CLAUDE_CODE_USE_FOUNDRY = '1';
   } else if (provider === 'anthropic') {
     // Validate Anthropic API key
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -266,7 +277,7 @@ async function main() {
     // User must have run: npx @anthropic-ai/claude-code login
     console.log('💡 Using Claude Code Subscription (ensure you have run: npx @anthropic-ai/claude-code login)');
   } else {
-    console.error(`❌ Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, anthropic, subscription`);
+    console.error(`❌ Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, foundry, anthropic, subscription`);
     process.exit(1);
   }
 
@@ -425,6 +436,20 @@ After all tasks complete, the human should verify:
     env.AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
     console.log(`🚀 Spawning Architect (Opus via Bedrock: ${CONFIG.model.id})...`);
 
+  } else if (provider === 'foundry') {
+    // Microsoft Foundry - Set Foundry-specific vars
+    env.ANTHROPIC_MODEL = CONFIG.model.id;
+    env.CLAUDE_CODE_USE_FOUNDRY = '1';
+    env.ANTHROPIC_FOUNDRY_API_KEY = process.env.ANTHROPIC_FOUNDRY_API_KEY;
+    // Use resource name or base URL (one or the other)
+    if (process.env.ANTHROPIC_FOUNDRY_RESOURCE) {
+      env.ANTHROPIC_FOUNDRY_RESOURCE = process.env.ANTHROPIC_FOUNDRY_RESOURCE;
+    }
+    if (process.env.ANTHROPIC_FOUNDRY_BASE_URL) {
+      env.ANTHROPIC_FOUNDRY_BASE_URL = process.env.ANTHROPIC_FOUNDRY_BASE_URL;
+    }
+    console.log(`🚀 Spawning Architect (Opus via Microsoft Foundry: ${CONFIG.model.id})...`);
+
   } else if (provider === 'anthropic') {
     // Anthropic API - Set ONLY API key (no ANTHROPIC_MODEL)
     env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -437,7 +462,7 @@ After all tasks complete, the human should verify:
 
   } else {
     console.error(`❌ Invalid AI_PROVIDER: ${provider}`);
-    console.error('Valid options: bedrock, anthropic, subscription');
+    console.error('Valid options: bedrock, foundry, anthropic, subscription');
     process.exit(1);
   }
 

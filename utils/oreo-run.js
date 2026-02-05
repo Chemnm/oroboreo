@@ -705,6 +705,18 @@ async function main() {
     process.env.CLAUDE_CODE_USE_BEDROCK = '1';
     process.env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
     log(`AWS Region: ${process.env.AWS_REGION}`);
+  } else if (provider === 'foundry') {
+    // Validate Microsoft Foundry credentials
+    if (!process.env.ANTHROPIC_FOUNDRY_API_KEY) {
+      log('ANTHROPIC_FOUNDRY_API_KEY not set! Please configure oroboreo/.env', 'ERROR');
+      process.exit(1);
+    }
+    if (!process.env.ANTHROPIC_FOUNDRY_RESOURCE && !process.env.ANTHROPIC_FOUNDRY_BASE_URL) {
+      log('ANTHROPIC_FOUNDRY_RESOURCE or ANTHROPIC_FOUNDRY_BASE_URL not set! Please configure oroboreo/.env', 'ERROR');
+      process.exit(1);
+    }
+    process.env.CLAUDE_CODE_USE_FOUNDRY = '1';
+    log('Using Microsoft Foundry');
   } else if (provider === 'anthropic') {
     // Validate Anthropic API key
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -717,7 +729,7 @@ async function main() {
     // User must have run: npx @anthropic-ai/claude-code login
     log('Using Claude Code Subscription (ensure you have run: npx @anthropic-ai/claude-code login)');
   } else {
-    log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, anthropic, subscription`, 'ERROR');
+    log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, foundry, anthropic, subscription`, 'ERROR');
     process.exit(1);
   }
 
@@ -815,7 +827,10 @@ async function main() {
       AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
       AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
       AWS_REGION: process.env.AWS_REGION,
-      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY
+      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+      ANTHROPIC_FOUNDRY_API_KEY: process.env.ANTHROPIC_FOUNDRY_API_KEY,
+      ANTHROPIC_FOUNDRY_RESOURCE: process.env.ANTHROPIC_FOUNDRY_RESOURCE,
+      ANTHROPIC_FOUNDRY_BASE_URL: process.env.ANTHROPIC_FOUNDRY_BASE_URL
     };
 
     // Clear ALL provider environment variables first
@@ -840,6 +855,20 @@ async function main() {
       env.AWS_SECRET_ACCESS_KEY = savedCredentials.AWS_SECRET_ACCESS_KEY;
       log(`Using AWS Bedrock with model: ${model.id}`, 'INFO');
 
+    } else if (provider === 'foundry') {
+      // Microsoft Foundry - Set Foundry-specific vars
+      env.ANTHROPIC_MODEL = model.id;
+      env.CLAUDE_CODE_USE_FOUNDRY = '1';
+      env.ANTHROPIC_FOUNDRY_API_KEY = savedCredentials.ANTHROPIC_FOUNDRY_API_KEY;
+      // Use resource name or base URL (one or the other)
+      if (savedCredentials.ANTHROPIC_FOUNDRY_RESOURCE) {
+        env.ANTHROPIC_FOUNDRY_RESOURCE = savedCredentials.ANTHROPIC_FOUNDRY_RESOURCE;
+      }
+      if (savedCredentials.ANTHROPIC_FOUNDRY_BASE_URL) {
+        env.ANTHROPIC_FOUNDRY_BASE_URL = savedCredentials.ANTHROPIC_FOUNDRY_BASE_URL;
+      }
+      log(`Using Microsoft Foundry with model: ${model.id}`, 'INFO');
+
     } else if (provider === 'anthropic') {
       // Anthropic API - Set ONLY API key (no ANTHROPIC_MODEL)
       env.ANTHROPIC_API_KEY = savedCredentials.ANTHROPIC_API_KEY;
@@ -851,7 +880,7 @@ async function main() {
       log(`Using Claude Subscription with model: ${model.id}`, 'INFO');
 
     } else {
-      log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, anthropic, subscription`, 'ERROR');
+      log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, foundry, anthropic, subscription`, 'ERROR');
       process.exit(1);
     }
 

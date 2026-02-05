@@ -391,6 +391,17 @@ async function main() {
     }
     process.env.CLAUDE_CODE_USE_BEDROCK = '1';
     process.env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+  } else if (provider === 'foundry') {
+    // Validate Microsoft Foundry credentials
+    if (!process.env.ANTHROPIC_FOUNDRY_API_KEY) {
+      log('ANTHROPIC_FOUNDRY_API_KEY not set! Please configure oroboreo/.env', 'yellow');
+      process.exit(1);
+    }
+    if (!process.env.ANTHROPIC_FOUNDRY_RESOURCE && !process.env.ANTHROPIC_FOUNDRY_BASE_URL) {
+      log('ANTHROPIC_FOUNDRY_RESOURCE or ANTHROPIC_FOUNDRY_BASE_URL not set! Please configure oroboreo/.env', 'yellow');
+      process.exit(1);
+    }
+    process.env.CLAUDE_CODE_USE_FOUNDRY = '1';
   } else if (provider === 'anthropic') {
     // Validate Anthropic API key
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -402,7 +413,7 @@ async function main() {
     // User must have run: npx @anthropic-ai/claude-code login
     log('Using Claude Code Subscription (ensure you have run: npx @anthropic-ai/claude-code login)\n');
   } else {
-    log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, anthropic, subscription`, 'yellow');
+    log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, foundry, anthropic, subscription`, 'yellow');
     process.exit(1);
   }
 
@@ -481,6 +492,20 @@ async function main() {
     env.AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
     log('Spawning via Bedrock...\n');
 
+  } else if (provider === 'foundry') {
+    // Microsoft Foundry - Set Foundry-specific vars
+    env.ANTHROPIC_MODEL = CONFIG.model.id;
+    env.CLAUDE_CODE_USE_FOUNDRY = '1';
+    env.ANTHROPIC_FOUNDRY_API_KEY = process.env.ANTHROPIC_FOUNDRY_API_KEY;
+    // Use resource name or base URL (one or the other)
+    if (process.env.ANTHROPIC_FOUNDRY_RESOURCE) {
+      env.ANTHROPIC_FOUNDRY_RESOURCE = process.env.ANTHROPIC_FOUNDRY_RESOURCE;
+    }
+    if (process.env.ANTHROPIC_FOUNDRY_BASE_URL) {
+      env.ANTHROPIC_FOUNDRY_BASE_URL = process.env.ANTHROPIC_FOUNDRY_BASE_URL;
+    }
+    log('Spawning via Microsoft Foundry...\n');
+
   } else if (provider === 'anthropic') {
     // Anthropic API - Set ONLY API key (no ANTHROPIC_MODEL)
     env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -493,7 +518,7 @@ async function main() {
 
   } else {
     log(`Invalid AI_PROVIDER: ${provider}`, 'yellow');
-    log('Valid options: bedrock, anthropic, subscription', 'yellow');
+    log('Valid options: bedrock, foundry, anthropic, subscription', 'yellow');
     process.exit(1);
   }
 
