@@ -166,7 +166,7 @@ async function fetchCloudWatchMetrics() {
   const oneHourAgo = new Date(now.getTime() - 3600000);
 
   const models = [
-    'us.anthropic.claude-opus-4-5-20251101-v1:0',
+    'us.anthropic.claude-opus-4-6-v1',
     'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
     'us.anthropic.claude-haiku-4-5-20251001-v1:0'
   ];
