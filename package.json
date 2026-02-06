@@ -1,6 +1,6 @@
 {
   "name": "@oroboreo/cli",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "The Golden Loop - Self-improving, cost-optimized autonomous development engine",
   "main": "utils/oreo-run.js",
   "bin": {
