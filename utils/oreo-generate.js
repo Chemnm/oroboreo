@@ -5,7 +5,7 @@
  * This script generates NEW tasks for a fresh feature. Unlike oreo-feedback.js
  * (which generates FIX tasks from issues), this is for starting something new.
  *
- * Uses Claude Opus 4.5 with extended thinking to create comprehensive
+ * Uses Claude Opus 4.6 with extended thinking to create comprehensive
  * task breakdowns with complexity tags.
  *
  * ============================================================================
@@ -462,7 +462,7 @@ async function main() {
   }
 
   // Generate with Opus
-  log('\nSpawning Opus 4.5 to generate tasks...', 'cyan');
+  log('\nSpawning Opus 4.6 to generate tasks...', 'cyan');
   log('(This may take 30-60 seconds)\n', 'yellow');
 
   const prompt = buildGeneratePrompt(feature, context);

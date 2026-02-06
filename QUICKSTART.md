@@ -112,7 +112,7 @@ oro-generate "Add user authentication with JWT"
 ```
 
 **What it does:**
-- Spawns Opus 4.5 (thinking model)
+- Spawns Opus 4.6 (thinking model)
 - Analyzes your project
 - Creates 8-15 detailed tasks in `cookie-crumbs.md`
 

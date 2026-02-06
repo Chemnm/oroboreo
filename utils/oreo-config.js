@@ -7,12 +7,13 @@ const path = require('path');
 // Bedrock Model IDs (for AWS Bedrock)
 const MODELS = {
   OPUS: {
-    id: 'us.anthropic.claude-opus-4-5-20251101-v1:0',
-    name: 'Claude Opus 4.5',
+    id: 'us.anthropic.claude-opus-4-6-v1',
+    name: 'Claude Opus 4.6',
     inputCost: 5.0,
     outputCost: 25.0,
     maxOutput: 100000,
     maxThinking: 32000
+    // Previous: 'us.anthropic.claude-opus-4-5-20251101-v1:0' (Opus 4.5)
   },
   SONNET: {
     id: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
@@ -37,12 +38,13 @@ const MODELS = {
 // These aliases automatically resolve to the latest model
 const ANTHROPIC_MODELS = {
   OPUS: {
-    id: 'opus-4-5',
-    name: 'Claude Opus 4.5',
+    id: 'opus-4-6',
+    name: 'Claude Opus 4.6',
     inputCost: 5.0,
     outputCost: 25.0,
     maxOutput: 100000,
     maxThinking: 32000
+    // Previous: 'opus-4-5' (Opus 4.5)
   },
   SONNET: {
     id: 'sonnet-4-5',
@@ -67,12 +69,13 @@ const ANTHROPIC_MODELS = {
 // Docs: https://platform.claude.com/docs/en/build-with-claude/claude-in-microsoft-foundry
 const FOUNDRY_MODELS = {
   OPUS: {
-    id: 'claude-opus-4-5',
-    name: 'Claude Opus 4.5',
+    id: 'azureml://registries/azureml-anthropic/models/claude-opus-4-6/versions/1',
+    name: 'Claude Opus 4.6',
     inputCost: 5.0,
     outputCost: 25.0,
     maxOutput: 100000,
     maxThinking: 32000
+    // Previous: 'claude-opus-4-5' (Opus 4.5)
   },
   SONNET: {
     id: 'claude-sonnet-4-5',

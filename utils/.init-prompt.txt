@@ -16,7 +16,7 @@ Oroboreo(oro = gold, ouroboros = the eternal loop) is a  meta-development system
 ## What is Oroboreo?
 
 ### 1. **Autonomous & Self-Sufficient**
-- ✅ Plans its own work (Opus 4.5 PRD generation)
+- ✅ Plans its own work (Opus 4.6 PRD generation)
 - ✅ Executes with optimal cost/power ratio (Sonnet/Haiku routing)
 - ✅ Commits progress automatically (Git integration)
 - ✅ Learns from past sessions (Archive analysis)
@@ -56,7 +56,7 @@ I have over 10 years of development experience and as AI has become more and mor
 
 ```
 ┌─────────────────────────────────────────┐
-│ Layer 1: PLANNING (Opus 4.5)            │
+│ Layer 1: PLANNING (Opus 4.6)            │
 │ ├─ Generate comprehensive PRDs          │
 │ ├─ Tag task complexity [SIMPLE/COMPLEX] │
 │ └─ Cost: $0.30-2 per PRD (one-time)     │
@@ -129,7 +129,7 @@ node oreo-init.js
 
 #### Option A: Generate NEW Feature Tasks
 ```bash
-# Use Opus 4.5 to generate comprehensive task breakdown
+# Use Opus 4.6 to generate comprehensive task breakdown
 node oroboreo/utils/oreo-generate.js "Add user authentication with JWT"
 
 # OR: Create new-prompt.md with detailed feature description, then:

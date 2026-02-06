@@ -13,7 +13,7 @@ Oroboreo is a  meta-development system that combines Claude Code, AWS Bedrock, i
 ## What is Oroboreo?
 
 ### 1. **Autonomous & Self-Sufficient**
-- ✅ Plans its own work (Opus 4.5 PRD generation)
+- ✅ Plans its own work (Opus 4.6 PRD generation)
 - ✅ Executes with optimal cost/power ratio (Sonnet/Haiku routing)
 - ✅ Commits progress automatically (Git integration)
 - ✅ Learns from past sessions (Archive analysis)
@@ -61,7 +61,7 @@ This isn't about replacing developers. It's about giving devs & builders leverag
 
 ```
 ┌─────────────────────────────────────────┐
-│ Layer 1: PLANNING (Opus 4.5)            │
+│ Layer 1: PLANNING (Opus 4.6)            │
 │ ├─ Generate comprehensive PRDs          │
 │ ├─ Tag task complexity [SIMPLE/COMPLEX] │
 │ └─ Cost: $0.30-2 per PRD (one-time)     │
@@ -163,7 +163,7 @@ oro-init
 
 #### Option A: Generate NEW Feature Tasks
 ```bash
-# Use Opus 4.5 to generate comprehensive task breakdown
+# Use Opus 4.6 to generate comprehensive task breakdown
 oro-generate "Add user authentication with JWT"
 
 # OR: Create new-prompt.md with detailed feature description, then:
@@ -277,8 +277,8 @@ your-project/
 | `utils/oreo-config.js` | Shared configuration - model IDs, costs, paths (SINGLE SOURCE OF TRUTH) |
 | `utils/oreo-init.js` | Initialize Oroboreoin a new project (AI-powered or manual) |
 | `utils/oreo-run.js` | Main loop - executes tasks from cookie-crumbs.md |
-| `utils/oreo-generate.js` | Generate tasks for NEW features (uses Opus 4.5) |
-| `utils/oreo-feedback.js` | Generate FIX tasks from human feedback (uses Opus 4.5) |
+| `utils/oreo-generate.js` | Generate tasks for NEW features (uses Opus 4.6) |
+| `utils/oreo-feedback.js` | Generate FIX tasks from human feedback (uses Opus 4.6) |
 | `utils/oreo-archive.js` | Archive completed sessions with year/month structure (HISTORIAN) |
 | `utils/oreo-costs.js` | Export costs to CSV or compare with CloudWatch (ACCOUNTANT) |
 | `utils/oreo-diagnose.js` | Post-mortem analysis for hung/failed tasks (DEBUGGER) |
@@ -401,7 +401,7 @@ Oroboreo automatically uses the correct model IDs based on your provider:
 
 | Model | Cost (per 1M tokens) | Used For |
 |-------|---------------------|----------|
-| **Opus 4.5** | $5/$25 | Architect (PRD generation) |
+| **Opus 4.6** | $5/$25 | Architect (PRD generation) |
 | **Sonnet 4.5** | $3/$15 | Complex tasks `[COMPLEX]` |
 | **Haiku 4.5** | $1/$5 | Simple tasks `[SIMPLE]` |
 

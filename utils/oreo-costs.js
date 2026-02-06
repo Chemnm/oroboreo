@@ -247,7 +247,7 @@ async function compareWithCloudWatch() {
     let pricing = modelPricing.sonnet;
 
     if (metric.modelId.includes('opus')) {
-      modelName = 'Opus 4.5';
+      modelName = 'Opus 4.6';
       pricing = modelPricing.opus;
     } else if (metric.modelId.includes('sonnet')) {
       modelName = 'Sonnet 4.5';
