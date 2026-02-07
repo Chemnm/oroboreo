@@ -408,9 +408,9 @@ function extractSessionSummary(archivePath) {
   const sessionMatch = content.match(/\*\*Session\*\*:\s*(.+)/i);
   const session = sessionMatch ? sessionMatch[1].trim() : 'Unknown';
 
-  // Count tasks
-  const completed = (content.match(/- \[x\]/gi) || []).length;
-  const total = (content.match(/- \[[ x]\]/gi) || []).length;
+  // Count only actual tasks (with **Task N:** format), not verification checkboxes
+  const completed = (content.match(/- \[x\] \*\*Task \d+:/gi) || []).length;
+  const total = (content.match(/- \[[ x]\] \*\*Task \d+:/gi) || []).length;
 
   // Generate 2-sentence summary
   return `Session "${session}" completed ${completed}/${total} tasks. See archives/${path.basename(archivePath)} for details.`;
