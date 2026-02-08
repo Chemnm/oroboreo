@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 
 // ============================================================================
 // BEDROCK MODELS - Single Source of Truth

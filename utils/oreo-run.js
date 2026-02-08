@@ -624,14 +624,17 @@ EXECUTION RULES
 4. Log important findings to progress.txt.
 5. Do NOT create unnecessary files or over-engineer.
 6. **Check oroboreo/tests/reusable/** for existing verification scripts before creating new ones.
+   Available tools: \`verify-ui.js\` (CLI runner), \`browser-utils.js\` (programmatic API).
 7. **Create session-specific tests** in oroboreo/tests/ (will be archived after session).
 8. **Create reusable tests** in oroboreo/tests/reusable/ for generic functionality (persists).
 9. Tests MUST be executable scripts (Node.js, bash, curl) - NOT manual browser checks.
-10. **For UI verification:** Prefer the CLI runner for common checks:
-    \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
-    For complex verifications, use oroboreo/tests/reusable/browser-utils.js programmatically.
-    - Check \`isPlaywrightInstalled()\` before using browser features.
-    - Browser tests must run headless and capture console errors.
+10. **MANDATORY for UI/frontend tasks:** You MUST verify UI changes with automated browser tests, NOT manual human verification.
+    - Simple checks: \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
+    - Form testing: \`node oroboreo/tests/reusable/verify-ui.js --url URL --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
+    - Error checking: \`node oroboreo/tests/reusable/verify-ui.js --url URL --check-errors\`
+    - Complex flows: use \`oroboreo/tests/reusable/browser-utils.js\` programmatically.
+    - Check \`isPlaywrightInstalled()\` before using browser features. If not installed, log a warning and skip.
+    - NEVER write "human should manually verify" for UI tasks when Playwright is available.
 `;
 }
 

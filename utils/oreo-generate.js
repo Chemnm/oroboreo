@@ -304,12 +304,14 @@ Create a detailed task list and write it to \`oroboreo/cookie-crumbs.md\`.
    - **Session tests** (\`oroboreo/tests/\`): Feature-specific, will be archived after session
      - Examples: verify-task-36-fix.js, test-dashboard-redesign.js
 
-6. **Browser Testing (for UI Verification)**
-   - **Preferred:** Use the CLI runner for common checks (no script needed):
+6. **Browser Testing (MANDATORY for UI/frontend tasks)**
+   For ANY task involving UI changes, the Verification field MUST include automated browser tests.
+   NEVER write "human should manually verify" for UI tasks. The following tools are pre-installed:
+   - **CLI runner** (preferred - no script needed):
      \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
      \`node oroboreo/tests/reusable/verify-ui.js --url URL --check-errors\`
      \`node oroboreo/tests/reusable/verify-ui.js --url URL --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
-   - **Custom:** For complex flows, use \`oroboreo/tests/reusable/browser-utils.js\` programmatically
+   - **Programmatic API** (for complex flows): \`oroboreo/tests/reusable/browser-utils.js\`
    - Always check \`isPlaywrightInstalled()\` before using browser features
    - Example custom browser verification script:
      \`\`\`javascript

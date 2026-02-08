@@ -389,13 +389,20 @@ Use this format for each task:
 - Examples of GOOD verification: "Run \`npm test\`", "Execute \`node scripts/verify-fix.js\`", "Check logs show correct output"
 - Examples of BAD verification: "Open browser and manually check UI", "Manually test the button", "Visually inspect the page"
 - All verification should be executable by Claude Code (no manual GUI interaction)
+- **CRITICAL: For ANY task involving UI/frontend changes, verification MUST include automated browser tests using the tools below. NEVER write "human should manually verify" for UI tasks.**
 
-**BROWSER TESTING (for UI fixes)**
+**BROWSER TESTING (MANDATORY for UI/frontend tasks)**
 
-- **Preferred:** Use the CLI runner: \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
-- **Complex flows:** Use \`oroboreo/tests/reusable/browser-utils.js\` for custom test scripts
-- Always check \`isPlaywrightInstalled()\` before generating browser tests
-- CLI runner also supports: \`--check-errors\`, \`--fill 'SEL=VAL'\`, \`--click 'SEL'\`
+The following tools are pre-installed in \`oroboreo/tests/reusable/\`:
+- **verify-ui.js** - CLI runner for zero-script browser verification
+- **browser-utils.js** - Programmatic API for complex browser tests
+
+For each UI task, the **Verification** field MUST include one of these:
+- \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
+- \`node oroboreo/tests/reusable/verify-ui.js --url URL --check-errors\`
+- \`node oroboreo/tests/reusable/verify-ui.js --url URL --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
+- A custom script using \`oroboreo/tests/reusable/browser-utils.js\` (for complex flows)
+- Always include \`isPlaywrightInstalled()\` check as a guard
 
 **IMPORTANT**
 
