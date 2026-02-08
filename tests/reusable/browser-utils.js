@@ -268,11 +268,112 @@ function getConsoleErrors(consoleLogs) {
   );
 }
 
+// ============================================================================
+// HIGH-LEVEL VERIFICATION HELPERS
+// ============================================================================
+// These reduce agent-generated code from 20-50 lines to a single function call,
+// cutting token cost per verification by 3-5x.
+
+/**
+ * Verify an element exists on a page
+ *
+ * @param {string} url - URL to navigate to
+ * @param {string} selector - CSS selector to check
+ * @param {Object} options - Optional configuration
+ * @param {string} options.text - Expected text content (partial match)
+ * @param {number} options.timeout - Element wait timeout in ms (default: 5000)
+ * @param {boolean} options.headless - Run without visible browser (default: true)
+ * @returns {Object} Result: { success, errors, consoleLogs, screenshots }
+ *
+ * @example
+ * const result = await verifyElementExists('http://localhost:3000', '.dashboard');
+ * const result = await verifyElementExists('http://localhost:3000', 'h1', { text: 'Welcome' });
+ */
+async function verifyElementExists(url, selector, options = {}) {
+  return testUI(url, async (page) => {
+    await page.waitForSelector(selector, { timeout: options.timeout || 5000 });
+    if (options.text) {
+      const actual = await page.textContent(selector);
+      if (!actual || !actual.includes(options.text)) {
+        throw new Error(`Expected "${selector}" to contain "${options.text}", got "${actual}"`);
+      }
+      console.log(`Verified: "${selector}" contains "${options.text}"`);
+    } else {
+      console.log(`Verified: "${selector}" exists`);
+    }
+  }, options);
+}
+
+/**
+ * Verify a page loads without JavaScript errors
+ *
+ * @param {string} url - URL to check
+ * @param {Object} options - Optional configuration
+ * @param {number} options.timeout - Navigation timeout in ms (default: 30000)
+ * @param {boolean} options.headless - Run without visible browser (default: true)
+ * @returns {Object} Result: { success, errors, consoleLogs, screenshots }
+ *
+ * @example
+ * const result = await verifyPageLoads('http://localhost:3000');
+ */
+async function verifyPageLoads(url, options = {}) {
+  return testUI(url, async (page) => {
+    // testUI already navigates and captures console errors
+    // Check for page errors after load
+    const errors = page.context()._pageErrors || [];
+    if (errors.length > 0) {
+      throw new Error(`Page had ${errors.length} JavaScript error(s)`);
+    }
+  }, { ...options, captureConsole: true });
+}
+
+/**
+ * Verify a form submission succeeds
+ *
+ * @param {string} url - Form page URL
+ * @param {Array} formActions - Array of { action, selector, value }
+ *   action: 'fill' | 'click' | 'select'
+ * @param {string} successSelector - CSS selector that appears on success
+ * @param {Object} options - Optional configuration
+ * @param {number} options.timeout - Wait timeout in ms (default: 10000)
+ * @param {boolean} options.headless - Run without visible browser (default: true)
+ * @returns {Object} Result: { success, errors, consoleLogs, screenshots }
+ *
+ * @example
+ * const result = await verifyFormSubmission(
+ *   'http://localhost:3000/login',
+ *   [
+ *     { action: 'fill', selector: 'input[name="email"]', value: 'test@test.com' },
+ *     { action: 'fill', selector: 'input[name="password"]', value: 'pass123' },
+ *     { action: 'click', selector: 'button[type="submit"]' }
+ *   ],
+ *   '.dashboard'
+ * );
+ */
+async function verifyFormSubmission(url, formActions, successSelector, options = {}) {
+  return testUI(url, async (page) => {
+    for (const action of formActions) {
+      if (action.action === 'fill') {
+        await page.fill(action.selector, action.value);
+      } else if (action.action === 'click') {
+        await page.click(action.selector);
+      } else if (action.action === 'select') {
+        await page.selectOption(action.selector, action.value);
+      }
+    }
+    await page.waitForSelector(successSelector, { timeout: options.timeout || 10000 });
+    console.log(`Verified: "${successSelector}" appeared after form submission`);
+  }, options);
+}
+
 module.exports = {
   testUI,
   takeScreenshot,
   verifyText,
   isPlaywrightInstalled,
   getConsoleErrors,
+  verifyElementExists,
+  verifyPageLoads,
+  verifyFormSubmission,
   SCREENSHOTS_DIR
 };

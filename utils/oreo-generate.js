@@ -51,7 +51,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { getModelConfig, clearProviderEnv, getFoundryResource, hasFoundryConfig, getPaths, COLORS, COST_FACTORS } = require('./oreo-config.js');
+const { getModelConfig, clearProviderEnv, getFoundryResource, hasFoundryConfig, getPaths, syncReusableUtils, COLORS, COST_FACTORS } = require('./oreo-config.js');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -305,12 +305,14 @@ Create a detailed task list and write it to \`oroboreo/cookie-crumbs.md\`.
      - Examples: verify-task-36-fix.js, test-dashboard-redesign.js
 
 6. **Browser Testing (for UI Verification)**
-   - For UI tasks, use \`oroboreo/tests/reusable/browser-utils.js\` for autonomous browser testing
-   - Browser tests run headless and capture console errors automatically
+   - **Preferred:** Use the CLI runner for common checks (no script needed):
+     \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
+     \`node oroboreo/tests/reusable/verify-ui.js --url URL --check-errors\`
+     \`node oroboreo/tests/reusable/verify-ui.js --url URL --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
+   - **Custom:** For complex flows, use \`oroboreo/tests/reusable/browser-utils.js\` programmatically
    - Always check \`isPlaywrightInstalled()\` before using browser features
-   - Example browser verification script:
+   - Example custom browser verification script:
      \`\`\`javascript
-     // tests/verify-login-ui.js
      const { testUI, isPlaywrightInstalled } = require('./reusable/browser-utils');
 
      if (!isPlaywrightInstalled()) {
@@ -370,6 +372,9 @@ async function main() {
 
   // Ensure AWS credentials file exists (for SDK fallback when AWS CLI not installed)
   ensureAwsCredentialsFile();
+
+  // Sync reusable test utilities (ensures browser-utils.js etc. are up to date)
+  syncReusableUtils();
 
   // Set up provider-aware models
   const MODELS = getModelConfig();

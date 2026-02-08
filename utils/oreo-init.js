@@ -39,7 +39,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { getModelConfig, clearProviderEnv, getPaths, COLORS, COST_FACTORS } = require('./oreo-config.js');
+const { getModelConfig, clearProviderEnv, getPaths, syncReusableUtils, COLORS, COST_FACTORS } = require('./oreo-config.js');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -525,18 +525,25 @@ async function main() {
     log('cookie-crumbs.md already exists - skipping', 'cyan');
   }
 
-  // Step 5: Setup archive structure
-  log('\n\nSTEP 5: Creating Archive Structure', 'bright');
+  // Step 5: Setup test structure and reusable utilities
+  log('\n\nSTEP 5: Creating Test Structure', 'bright');
+  log('─────────────────────────────────────────────────────────────\n', 'yellow');
+
+  syncReusableUtils();
+  log(`Synced: tests/reusable/ (browser-utils.js, READMEs)`, 'green');
+
+  // Step 6: Setup archive structure
+  log('\n\nSTEP 6: Creating Archive Structure', 'bright');
   log('─────────────────────────────────────────────────────────────\n', 'yellow');
 
   const archiveDir = path.join(oroborosDir, 'archives');
   fs.mkdirSync(archiveDir, { recursive: true });
   log(`Created: archives/`, 'green');
 
-  // Step 6: Provider configuration (if not already done)
+  // Step 7: Provider configuration (if not already done)
   if (!hasCredentials) {
     const providerName = provider === 'anthropic' ? 'Anthropic API' : 'AWS Bedrock';
-    log(`\n\nSTEP 6: ${providerName} Configuration`, 'bright');
+    log(`\n\nSTEP 7: ${providerName} Configuration`, 'bright');
     log('─────────────────────────────────────────────────────────────\n', 'yellow');
 
     const configureProvider = await question(`Configure ${providerName} credentials now? (yes/no): `);

@@ -275,9 +275,36 @@ npm install playwright
 npx playwright install chromium
 ```
 
-### Using browser-utils.js
+### Quick Verification (CLI Runner)
 
-The `browser-utils.js` module provides utilities for autonomous UI testing:
+For common UI checks, use the CLI runner — no script needed:
+
+```bash
+# Check element exists
+node oroboreo/tests/reusable/verify-ui.js --url http://localhost:3000 --selector ".dashboard"
+
+# Check element has text
+node oroboreo/tests/reusable/verify-ui.js --url http://localhost:3000 --selector "h1" --text "Welcome"
+
+# Check page loads without JS errors
+node oroboreo/tests/reusable/verify-ui.js --url http://localhost:3000 --check-errors
+
+# Form submission
+node oroboreo/tests/reusable/verify-ui.js --url http://localhost:3000/login \
+  --fill 'input[name="email"]=test@test.com' \
+  --fill 'input[name="password"]=pass123' \
+  --click 'button[type="submit"]' \
+  --selector ".success-message"
+
+# Custom timeout
+node oroboreo/tests/reusable/verify-ui.js --url http://localhost:3000 --selector ".slow-load" --timeout 15000
+```
+
+The CLI runner is preferred because it eliminates script generation, reducing token cost by 3-5x per verification.
+
+### Using browser-utils.js (Programmatic API)
+
+For complex flows that the CLI runner can't handle, use `browser-utils.js` directly:
 
 ```javascript
 const { testUI, takeScreenshot, isPlaywrightInstalled } = require('./browser-utils');
@@ -341,6 +368,35 @@ Check if Playwright is available before running tests.
 
 #### `verifyText(page, selector, expectedText)`
 Wait for element and verify its text content.
+
+#### `verifyElementExists(url, selector, options)`
+One-liner: navigate to URL and verify selector exists. Optionally check text content.
+
+```javascript
+const result = await verifyElementExists('http://localhost:3000', '.dashboard');
+const result = await verifyElementExists('http://localhost:3000', 'h1', { text: 'Welcome' });
+```
+
+#### `verifyPageLoads(url, options)`
+Verify a page loads without JavaScript errors.
+
+```javascript
+const result = await verifyPageLoads('http://localhost:3000');
+```
+
+#### `verifyFormSubmission(url, formActions, successSelector, options)`
+Fill a form, submit, and verify success element appears.
+
+```javascript
+const result = await verifyFormSubmission(
+  'http://localhost:3000/login',
+  [
+    { action: 'fill', selector: 'input[name="email"]', value: 'test@test.com' },
+    { action: 'click', selector: 'button[type="submit"]' }
+  ],
+  '.dashboard'
+);
+```
 
 ### Best Practices for Browser Tests
 

@@ -53,7 +53,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { getModelConfig, clearProviderEnv, getFoundryResource, hasFoundryConfig, getPaths, COST_FACTORS } = require('./oreo-config.js');
+const { getModelConfig, clearProviderEnv, getFoundryResource, hasFoundryConfig, getPaths, syncReusableUtils, COST_FACTORS } = require('./oreo-config.js');
 
 // ============================================================================
 // CONFIGURATION
@@ -234,6 +234,9 @@ async function main() {
   // Ensure AWS credentials file exists (for SDK fallback when AWS CLI not installed)
   ensureAwsCredentialsFile();
 
+  // Sync reusable test utilities (ensures browser-utils.js etc. are up to date)
+  syncReusableUtils();
+
   // Set up provider-aware models
   const MODELS = getModelConfig();
   CONFIG.model = MODELS.OPUS;
@@ -389,10 +392,10 @@ Use this format for each task:
 
 **BROWSER TESTING (for UI fixes)**
 
-- For UI-related fixes, use \`oroboreo/tests/reusable/browser-utils.js\` for autonomous browser testing
-- Browser tests run headless and can verify UI changes without human intervention
+- **Preferred:** Use the CLI runner: \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
+- **Complex flows:** Use \`oroboreo/tests/reusable/browser-utils.js\` for custom test scripts
 - Always check \`isPlaywrightInstalled()\` before generating browser tests
-- Example: "Run \`node oroboreo/tests/verify-button-fix.js\`" (uses browser-utils.js to test UI)
+- CLI runner also supports: \`--check-errors\`, \`--fill 'SEL=VAL'\`, \`--click 'SEL'\`
 
 **IMPORTANT**
 

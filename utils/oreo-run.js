@@ -54,7 +54,7 @@
 const { spawn, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { getModelConfig, clearProviderEnv, getFoundryResource, hasFoundryConfig, getPaths, COST_FACTORS } = require('./oreo-config.js');
+const { getModelConfig, clearProviderEnv, getFoundryResource, hasFoundryConfig, getPaths, syncReusableUtils, COST_FACTORS } = require('./oreo-config.js');
 
 // ============================================================================
 // CONFIGURATION
@@ -627,6 +627,11 @@ EXECUTION RULES
 7. **Create session-specific tests** in oroboreo/tests/ (will be archived after session).
 8. **Create reusable tests** in oroboreo/tests/reusable/ for generic functionality (persists).
 9. Tests MUST be executable scripts (Node.js, bash, curl) - NOT manual browser checks.
+10. **For UI verification:** Prefer the CLI runner for common checks:
+    \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
+    For complex verifications, use oroboreo/tests/reusable/browser-utils.js programmatically.
+    - Check \`isPlaywrightInstalled()\` before using browser features.
+    - Browser tests must run headless and capture console errors.
 `;
 }
 
@@ -685,6 +690,9 @@ async function main() {
 
   // Ensure AWS credentials file exists (for SDK fallback when AWS CLI not installed)
   ensureAwsCredentialsFile();
+
+  // Sync reusable test utilities (ensures browser-utils.js etc. are up to date)
+  syncReusableUtils();
 
   // Set up provider-aware models
   const MODELS = getModelConfig();
@@ -927,9 +935,30 @@ async function main() {
 
         let lastOutputTime = Date.now();
 
-        // Heartbeat check - detect silent hangs
+        // Heartbeat check - detect silent hangs AND completed-but-stuck agents
         const heartbeatInterval = setInterval(() => {
           const silentTime = Date.now() - lastOutputTime;
+
+          // Check if task was already marked complete in cookie-crumbs.md
+          try {
+            const currentTasks = parseTasks();
+            const currentTask = currentTasks.find(t => t.id === task.id);
+            if (currentTask && currentTask.completed) {
+              log(`Task ${task.id} marked complete but agent still running - killing zombie (PID: ${childProcess.pid})`, 'WARN');
+              clearInterval(heartbeatInterval);
+              try {
+                process.kill(childProcess.pid, 'SIGTERM');
+                setTimeout(() => {
+                  try { process.kill(childProcess.pid, 'SIGKILL'); } catch (e) {}
+                }, 5000);
+              } catch (e) {}
+              resolve();
+              return;
+            }
+          } catch (e) {
+            // If parsing fails, continue with normal heartbeat
+          }
+
           if (silentTime > CONFIG.silentWarningMs) {
             log(`WARNING: No output from agent for ${Math.floor(silentTime / 1000)}s (PID: ${childProcess.pid})`, 'WARN');
           } else {

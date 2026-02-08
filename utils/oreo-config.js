@@ -315,6 +315,61 @@ See \`oroboreo/archives/{archiveName}\` for full session logs.
   `.trim()
 };
 
+// ============================================================================
+// REUSABLE UTILITIES SYNC
+// ============================================================================
+
+/**
+ * Syncs reusable test utilities from the package to the user's project.
+ * Called on every oro-run, oro-generate, and oro-feedback invocation.
+ *
+ * - Creates oroboreo/tests/reusable/ if it doesn't exist
+ * - Copies new files that don't exist in the user's project
+ * - Updates existing files if the package version is newer (by comparing content)
+ *
+ * This ensures users who update via `npm update -g @oroboreo/cli` get
+ * the latest utilities without re-running oro-init.
+ */
+function syncReusableUtils() {
+  const packageTestsDir = path.join(__dirname, '..', 'tests');
+  const userOroboreoDir = path.join(process.cwd(), 'oroboreo');
+  const userTestsDir = path.join(userOroboreoDir, 'tests');
+  const userReusableDir = path.join(userTestsDir, 'reusable');
+
+  // Only sync if the user has an oroboreo directory (project is initialized)
+  if (!fs.existsSync(userOroboreoDir)) return;
+
+  // Ensure directories exist
+  if (!fs.existsSync(userReusableDir)) {
+    fs.mkdirSync(userReusableDir, { recursive: true });
+  }
+
+  // Files to sync from package -> user project
+  const filesToSync = [
+    { src: path.join(packageTestsDir, 'README.md'), dest: path.join(userTestsDir, 'README.md') },
+    { src: path.join(packageTestsDir, 'reusable', 'README.md'), dest: path.join(userReusableDir, 'README.md') },
+    { src: path.join(packageTestsDir, 'reusable', 'browser-utils.js'), dest: path.join(userReusableDir, 'browser-utils.js') },
+    { src: path.join(packageTestsDir, 'reusable', 'verify-ui.js'), dest: path.join(userReusableDir, 'verify-ui.js') }
+  ];
+
+  for (const file of filesToSync) {
+    if (!fs.existsSync(file.src)) continue;
+
+    const srcContent = fs.readFileSync(file.src, 'utf8');
+
+    if (!fs.existsSync(file.dest)) {
+      // File doesn't exist in user project - copy it
+      fs.writeFileSync(file.dest, srcContent, 'utf8');
+    } else {
+      // File exists - update if package version is different
+      const destContent = fs.readFileSync(file.dest, 'utf8');
+      if (srcContent !== destContent) {
+        fs.writeFileSync(file.dest, srcContent, 'utf8');
+      }
+    }
+  }
+}
+
 module.exports = {
   MODELS,
   ANTHROPIC_MODELS,
@@ -324,6 +379,7 @@ module.exports = {
   getFoundryResource,
   hasFoundryConfig,
   getPaths,
+  syncReusableUtils,
   COLORS,
   COST_FACTORS,
   GIT_CONFIG
