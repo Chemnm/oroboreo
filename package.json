@@ -13,7 +13,7 @@
     "oro-diagnose": "./utils/oreo-diagnose.js"
   },
   "scripts": {
-    "postinstall": "node -e \"if(process.platform!=='win32'){require('child_process').execSync('chmod +x utils/run-with-prompt.sh',{cwd:__dirname})}\"",
+    "postinstall": "node -e \"if(process.platform!=='win32'){try{require('child_process').execSync('chmod +x utils/run-with-prompt.sh',{cwd:__dirname})}catch(e){}}\"",
     "init": "node utils/oreo-init.js",
     "generate": "node utils/oreo-generate.js",
     "run": "node utils/oreo-run.js",

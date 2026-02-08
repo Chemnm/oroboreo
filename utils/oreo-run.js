@@ -825,14 +825,7 @@ async function main() {
     const scriptExt = process.platform === 'win32' ? '.bat' : '.sh';
     const batFile = path.join(__dirname, `run-with-prompt${scriptExt}`);
 
-    // On Unix systems, ensure script is executable
-    if (process.platform !== 'win32') {
-      try {
-        fs.chmodSync(batFile, '755');
-      } catch (e) {
-        log(`Warning: Could not make script executable: ${e.message}`, 'WARN');
-      }
-    }
+    // Note: No chmod needed — spawn uses shell: true which bypasses the execute bit
 
     // Save credentials BEFORE clearing (clearProviderEnv deletes them from process.env)
     const savedCredentials = {
