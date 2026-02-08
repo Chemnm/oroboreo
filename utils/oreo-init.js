@@ -242,6 +242,44 @@ Write directly to \`oroboreo/creme-filling.md\` with this structure:
 
 ---
 
+## Verification Strategy
+
+### Automated Testing (MANDATORY)
+All verification MUST use executable scripts. The following tools are available:
+
+**For API/Backend/Database verification:**
+- Node.js test scripts in \`oroboreo/tests/\`
+- curl/HTTP requests to API endpoints
+- Database queries via scripts
+- Build and lint commands
+
+**For UI/Frontend verification (Playwright Node.js library):**
+Oroboreo includes automated headless browser testing via the Playwright Node.js library. These are Node.js scripts — NOT a separate CLI tool. For ANY task involving UI changes:
+- **CLI runner (preferred):** \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
+- **Error checking:** \`node oroboreo/tests/reusable/verify-ui.js --url URL --check-errors\`
+- **Form testing:** \`node oroboreo/tests/reusable/verify-ui.js --url URL --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
+- **Complex flows:** Write a Node.js script using \`oroboreo/tests/reusable/browser-utils.js\` (Playwright library API)
+- **Server readiness:** Add \`--wait-for-server\` flag to wait for the dev server before testing
+
+**CRITICAL: Dev server MUST be running before browser tests.**
+Before running browser verification, the agent MUST ensure the application is running locally:
+1. Start the backend (e.g., \`node api/index.js &\` or \`npm run server &\`)
+2. Start the frontend (e.g., \`npm run dev &\` or \`npm start &\`)
+3. Use \`--wait-for-server\` flag OR call \`waitForServer(url)\` to confirm the server is reachable
+4. Then run the browser verification
+
+NEVER write "human should manually verify" or "open browser and check" for UI tasks.
+Always check \`isPlaywrightInstalled()\` before using browser features.
+
+### Good vs Bad Verification
+- ✅ GOOD: \`node oroboreo/tests/verify-feature.js\`
+- ✅ GOOD: \`node oroboreo/tests/reusable/verify-ui.js --url http://localhost:3000 --selector ".dashboard"\`
+- ✅ GOOD: \`curl localhost:3001/api/health\`
+- ❌ BAD: "Open browser and check the sidebar"
+- ❌ BAD: "Human should manually verify the button works"
+
+---
+
 ## Shared Memory (Learnings)
 
 ### What Works Well
@@ -263,6 +301,8 @@ Write directly to \`oroboreo/creme-filling.md\` with this structure:
 - Be SPECIFIC to this project, not generic
 - Base rules on actual code you read
 - Focus on what could break the project if violated
+- The Verification Strategy section MUST include Playwright browser testing for projects with a UI
+- NEVER generate rules that say "Claude cannot open browsers" — Playwright enables headless browser testing
 `;
 }
 

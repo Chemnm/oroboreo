@@ -46,6 +46,69 @@ function isPlaywrightInstalled() {
 }
 
 /**
+ * Wait for a server to become available at the given URL
+ * Retries with exponential backoff. Useful before running browser tests
+ * to ensure the dev server is actually running.
+ *
+ * @param {string} url - URL to check (e.g., 'http://localhost:3000')
+ * @param {Object} options - Optional configuration
+ * @param {number} options.timeout - Max wait time in ms (default: 30000)
+ * @param {number} options.interval - Initial retry interval in ms (default: 1000)
+ * @param {boolean} options.quiet - Suppress log output (default: false)
+ * @returns {Promise<boolean>} True if server is reachable, false if timed out
+ *
+ * @example
+ * const serverUp = await waitForServer('http://localhost:3000');
+ * if (!serverUp) {
+ *   console.error('Dev server is not running!');
+ *   process.exit(1);
+ * }
+ */
+async function waitForServer(url, options = {}) {
+  const { timeout = 30000, interval = 1000, quiet = false } = options;
+  const start = Date.now();
+  let attempt = 0;
+
+  // Use built-in http/https to avoid external dependencies
+  const http = url.startsWith('https') ? require('https') : require('http');
+
+  while (Date.now() - start < timeout) {
+    attempt++;
+    try {
+      await new Promise((resolve, reject) => {
+        const req = http.get(url, { timeout: 5000 }, (res) => {
+          // Any HTTP response means the server is up (even 404, 500, etc.)
+          res.resume(); // Consume response to free up memory
+          resolve();
+        });
+        req.on('error', reject);
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('Connection timed out'));
+        });
+      });
+
+      if (!quiet) {
+        console.log(`Server is ready at ${url} (attempt ${attempt})`);
+      }
+      return true;
+    } catch (e) {
+      if (!quiet && attempt === 1) {
+        console.log(`Waiting for server at ${url}...`);
+      }
+      // Wait before retry (cap at 5 seconds)
+      const delay = Math.min(interval * Math.pow(1.5, attempt - 1), 5000);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+
+  if (!quiet) {
+    console.error(`Server at ${url} did not respond within ${timeout}ms`);
+  }
+  return false;
+}
+
+/**
  * Run a browser test with automatic setup/teardown
  *
  * @param {string} url - URL to navigate to
@@ -371,6 +434,7 @@ module.exports = {
   takeScreenshot,
   verifyText,
   isPlaywrightInstalled,
+  waitForServer,
   getConsoleErrors,
   verifyElementExists,
   verifyPageLoads,

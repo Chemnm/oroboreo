@@ -42,7 +42,7 @@
  * @version 1.0.0
  */
 
-const { isPlaywrightInstalled, verifyElementExists, verifyPageLoads, verifyFormSubmission } = require('./browser-utils');
+const { isPlaywrightInstalled, waitForServer, verifyElementExists, verifyPageLoads, verifyFormSubmission } = require('./browser-utils');
 
 // ============================================================================
 // ARGUMENT PARSING
@@ -54,6 +54,8 @@ function parseArgs(argv) {
     selector: null,
     text: null,
     checkErrors: false,
+    waitForServer: false,
+    serverTimeout: null,
     fills: [],
     clicks: [],
     selects: [],
@@ -113,6 +115,12 @@ function parseArgs(argv) {
         });
         break;
       }
+      case '--wait-for-server':
+        args.waitForServer = true;
+        break;
+      case '--server-timeout':
+        args.serverTimeout = parseInt(argv[++i], 10);
+        break;
       case '--timeout':
         args.timeout = parseInt(argv[++i], 10);
         break;
@@ -147,6 +155,8 @@ Options:
   --fill 'SEL=VALUE'     Fill a form field (repeatable)
   --click SELECTOR       Click an element (repeatable)
   --select 'SEL=VALUE'   Select dropdown option (repeatable)
+  --wait-for-server      Wait for server to be reachable before testing
+  --server-timeout MS    Max time to wait for server (default: 30000)
   --timeout MS           Custom timeout in milliseconds
   --help, -h             Show this help
 
@@ -180,6 +190,18 @@ async function main() {
     console.error('Missing required --url argument');
     printHelp();
     process.exit(2);
+  }
+
+  // Wait for server if requested
+  if (args.waitForServer) {
+    const serverOpts = {};
+    if (args.serverTimeout) serverOpts.timeout = args.serverTimeout;
+    const serverUp = await waitForServer(args.url, serverOpts);
+    if (!serverUp) {
+      console.error(`Server at ${args.url} is not reachable. Is your dev server running?`);
+      console.error('Start it with the appropriate command (e.g., npm run dev, npm start)');
+      process.exit(1);
+    }
   }
 
   const hasFormActions = args.fills.length > 0 || args.clicks.length > 0 || args.selects.length > 0;

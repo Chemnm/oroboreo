@@ -305,17 +305,21 @@ Create a detailed task list and write it to \`oroboreo/cookie-crumbs.md\`.
      - Examples: verify-task-36-fix.js, test-dashboard-redesign.js
 
 6. **Browser Testing (MANDATORY for UI/frontend tasks)**
-   For ANY task involving UI changes, the Verification field MUST include automated browser tests.
+   For ANY task involving UI changes, the Verification field MUST include automated browser tests using the Playwright Node.js library.
    NEVER write "human should manually verify" for UI tasks. The following tools are pre-installed:
+   - **IMPORTANT:** Dev server MUST be running before browser tests. Verification steps should:
+     1. Start the backend/frontend if not already running (e.g., \`npm run dev &\`)
+     2. Use \`--wait-for-server\` to confirm server is reachable before testing
    - **CLI runner** (preferred - no script needed):
-     \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
-     \`node oroboreo/tests/reusable/verify-ui.js --url URL --check-errors\`
-     \`node oroboreo/tests/reusable/verify-ui.js --url URL --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
+     \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --selector SELECTOR [--text TEXT]\`
+     \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --check-errors\`
+     \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
    - **Programmatic API** (for complex flows): \`oroboreo/tests/reusable/browser-utils.js\`
+     - Call \`waitForServer(url)\` before \`testUI()\` to ensure server is reachable
    - Always check \`isPlaywrightInstalled()\` before using browser features
    - Example custom browser verification script:
      \`\`\`javascript
-     const { testUI, isPlaywrightInstalled } = require('./reusable/browser-utils');
+     const { testUI, waitForServer, isPlaywrightInstalled } = require('./reusable/browser-utils');
 
      if (!isPlaywrightInstalled()) {
        console.log('Playwright not installed, skipping browser test');
@@ -323,6 +327,10 @@ Create a detailed task list and write it to \`oroboreo/cookie-crumbs.md\`.
      }
 
      (async () => {
+       // Ensure dev server is running first
+       const serverUp = await waitForServer('http://localhost:3000');
+       if (!serverUp) { console.error('Dev server not running!'); process.exit(1); }
+
        const result = await testUI('http://localhost:3000/login', async (page) => {
          await page.fill('input[name="email"]', 'test@example.com');
          await page.click('button[type="submit"]');

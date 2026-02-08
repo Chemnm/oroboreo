@@ -393,15 +393,19 @@ Use this format for each task:
 
 **BROWSER TESTING (MANDATORY for UI/frontend tasks)**
 
-The following tools are pre-installed in \`oroboreo/tests/reusable/\`:
+These use the Playwright Node.js library (NOT a separate CLI tool). Pre-installed in \`oroboreo/tests/reusable/\`:
 - **verify-ui.js** - CLI runner for zero-script browser verification
 - **browser-utils.js** - Programmatic API for complex browser tests
 
+**CRITICAL: Dev server MUST be running before browser tests.** Each UI task's verification MUST include:
+1. Starting the dev server if not already running (e.g., \`npm run dev &\` or \`node api/index.js &\`)
+2. Using \`--wait-for-server\` to confirm the server is reachable before testing
+
 For each UI task, the **Verification** field MUST include one of these:
-- \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
-- \`node oroboreo/tests/reusable/verify-ui.js --url URL --check-errors\`
-- \`node oroboreo/tests/reusable/verify-ui.js --url URL --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
-- A custom script using \`oroboreo/tests/reusable/browser-utils.js\` (for complex flows)
+- \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --selector SELECTOR [--text TEXT]\`
+- \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --check-errors\`
+- \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
+- A custom Node.js script using \`oroboreo/tests/reusable/browser-utils.js\` (call \`waitForServer(url)\` first)
 - Always include \`isPlaywrightInstalled()\` check as a guard
 
 **IMPORTANT**

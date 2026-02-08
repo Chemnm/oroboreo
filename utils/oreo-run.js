@@ -628,11 +628,12 @@ EXECUTION RULES
 7. **Create session-specific tests** in oroboreo/tests/ (will be archived after session).
 8. **Create reusable tests** in oroboreo/tests/reusable/ for generic functionality (persists).
 9. Tests MUST be executable scripts (Node.js, bash, curl) - NOT manual browser checks.
-10. **MANDATORY for UI/frontend tasks:** You MUST verify UI changes with automated browser tests, NOT manual human verification.
-    - Simple checks: \`node oroboreo/tests/reusable/verify-ui.js --url URL --selector SELECTOR [--text TEXT]\`
-    - Form testing: \`node oroboreo/tests/reusable/verify-ui.js --url URL --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
-    - Error checking: \`node oroboreo/tests/reusable/verify-ui.js --url URL --check-errors\`
-    - Complex flows: use \`oroboreo/tests/reusable/browser-utils.js\` programmatically.
+10. **MANDATORY for UI/frontend tasks:** You MUST verify UI changes with automated browser tests (Playwright Node.js library), NOT manual human verification.
+    - **Before testing:** Ensure the dev server is running. Start backend/frontend if needed (e.g., \`npm run dev &\`), then use \`--wait-for-server\` to confirm.
+    - Simple checks: \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --selector SELECTOR [--text TEXT]\`
+    - Form testing: \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --fill 'SEL=VAL' --click 'SEL' --selector SUCCESS_SEL\`
+    - Error checking: \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --check-errors\`
+    - Complex flows: use \`oroboreo/tests/reusable/browser-utils.js\` programmatically (call \`waitForServer(url)\` first).
     - Check \`isPlaywrightInstalled()\` before using browser features. If not installed, log a warning and skip.
     - NEVER write "human should manually verify" for UI tasks when Playwright is available.
 `;
