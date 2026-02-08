@@ -641,7 +641,7 @@ function gitCommitArchive(sessionName) {
  * Requires: gh CLI installed and authenticated
  */
 function createPullRequest(sessionName, archivePath) {
-  const GIT_CONFIG = require('./oreo-config').GIT_CONFIG;
+  const GIT_CONFIG = require('./oreo-config').getGitConfig();
 
   // Skip if disabled
   if (!GIT_CONFIG.autoCreatePR) {
