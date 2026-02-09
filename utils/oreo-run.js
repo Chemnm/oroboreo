@@ -620,7 +620,7 @@ EXECUTION RULES
 ===============================================================================
 1. Complete the task described above.
 2. Follow all rules in creme-filling.md (the system rules above).
-3. Update cookie-crumbs.md to mark task [x] when done.
+3. CRITICAL: When the task is done, you MUST edit oroboreo/cookie-crumbs.md to change "- [ ]" to "- [x]" for this task. This is how the system knows you finished. If you do not mark the checkbox, the task will be retried. Do NOT ask what to do next — just mark it and exit.
 4. Log important findings to progress.txt.
 5. Do NOT create unnecessary files or over-engineer.
 6. **Check oroboreo/tests/reusable/** for existing verification scripts before creating new ones.
