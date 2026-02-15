@@ -71,6 +71,7 @@ const CONFIG = {
   gitTimeoutMs: parseInt(process.env.OREO_GIT_TIMEOUT_MS || '60000'),        // 1 minute default
   heartbeatIntervalMs: parseInt(process.env.OREO_HEARTBEAT_MS || '60000'),   // 1 minute default
   silentWarningMs: 5 * 60 * 1000,                                            // 5 minutes of silence triggers warning
+  expectedTaskDurationMs: parseInt(process.env.OREO_EXPECTED_TASK_DURATION_MS || '900000'), // 15 min default
 
   // Models (will be set after loading env)
   models: null,
@@ -89,6 +90,23 @@ const CONFIG = {
     commitOnFailure: false
   }
 };
+
+// ============================================================================
+// SESSION STATE (shared with oreo-status.js)
+// ============================================================================
+
+const sessionState = {
+  running: false,
+  currentTask: null,         // { id, title, attempt, maxAttempts }
+  taskStartTime: null,       // Date.now() when current task started
+  sessionStartTime: null,    // Date.now() when main() started
+  sessionCost: 0,
+  provider: null,
+  model: null
+};
+
+// Export for oreo-status.js
+module.exports = { sessionState, CONFIG, parseTasks: null }; // parseTasks set after definition
 
 // ============================================================================
 // UTILITIES
@@ -242,6 +260,7 @@ function trackCost(task, model, promptText, responseText) {
   });
 
   costLog.session.totalCost = (costLog.session.totalCost || 0) + totalCost;
+  sessionState.sessionCost = costLog.session.totalCost;
   saveCostLog(costLog);
 
   log(`Cost: $${totalCost.toFixed(4)} (Input: ${inputTokens}, Output: ${outputTokens})`, 'COST');
@@ -286,6 +305,9 @@ function parseTasks() {
   }
   return tasks;
 }
+
+// Wire up parseTasks export now that it's defined
+module.exports.parseTasks = parseTasks;
 
 // ============================================================================
 // MODEL SELECTION
@@ -644,6 +666,7 @@ EXECUTION RULES
 // ============================================================================
 
 async function main() {
+  sessionState.sessionStartTime = Date.now();
   console.log('');
   console.log('===============================================================================');
   console.log('OROBOREO - The Golden Loop');
@@ -705,6 +728,7 @@ async function main() {
   // Configure provider-specific settings
   const provider = (process.env.AI_PROVIDER || 'subscription').toLowerCase();
   log(`AI Provider: ${provider}`);
+  sessionState.provider = provider;
 
   if (provider === 'bedrock') {
     // Validate AWS credentials
@@ -771,6 +795,8 @@ async function main() {
 
     if (!task) {
       log('All tasks complete!', 'SUCCESS');
+      sessionState.running = false;
+      sessionState.currentTask = null;
       console.log('');
       console.log('===============================================================================');
       console.log('THE GOLDEN LOOP IS COMPLETE!');
@@ -815,6 +841,17 @@ async function main() {
 
     // 3.5 Check if Playwright is needed for this task
     checkPlaywrightNeeded(task);
+
+    // Update session state for observability
+    sessionState.running = true;
+    sessionState.currentTask = {
+      id: task.id,
+      title: task.title,
+      attempt: attempts + 1,
+      maxAttempts: CONFIG.maxRetriesPerTask
+    };
+    sessionState.taskStartTime = Date.now();
+    sessionState.model = model.name;
 
     // 4. Prepare prompt
     const prompt = constructPrompt(task);
@@ -937,8 +974,9 @@ async function main() {
           const silentTime = Date.now() - lastOutputTime;
 
           // Check if task was already marked complete in cookie-crumbs.md
+          let currentTasks = [];
           try {
-            const currentTasks = parseTasks();
+            currentTasks = parseTasks();
             const currentTask = currentTasks.find(t => t.id === task.id);
             if (currentTask && currentTask.completed) {
               log(`Task ${task.id} marked complete but agent still running - killing zombie (PID: ${childProcess.pid})`, 'WARN');
@@ -958,9 +996,60 @@ async function main() {
 
           if (silentTime > CONFIG.silentWarningMs) {
             log(`WARNING: No output from agent for ${Math.floor(silentTime / 1000)}s (PID: ${childProcess.pid})`, 'WARN');
-          } else {
-            log(`Agent still running (PID: ${childProcess.pid}, silent: ${Math.floor(silentTime / 1000)}s)`, 'INFO');
           }
+
+          // --- Improvement 4: Elapsed time vs expected ---
+          const elapsedMs = Date.now() - (sessionState.taskStartTime || Date.now());
+          const elapsedMin = Math.floor(elapsedMs / 60000);
+          const expectedMin = Math.floor(CONFIG.expectedTaskDurationMs / 60000);
+          if (elapsedMs <= CONFIG.expectedTaskDurationMs) {
+            const pct = Math.round((elapsedMs / CONFIG.expectedTaskDurationMs) * 100);
+            log(`[HEARTBEAT] Elapsed: ${elapsedMin}m/${expectedMin}m expected (${pct}%)`, 'INFO');
+          } else {
+            log(`[HEARTBEAT] Elapsed: ${elapsedMin}m (over ${expectedMin}m expected)`, 'WARN');
+          }
+
+          // --- Improvement 3: Cookie-Crumbs task status ---
+          try {
+            const totalTasks = currentTasks.length;
+            const completedTasks = currentTasks.filter(t => t.completed).length;
+            const current = currentTasks.find(t => !t.completed);
+            const currentLabel = current
+              ? `Task ${current.id} - ${current.title.substring(0, 50)}`
+              : 'none';
+            log(`[HEARTBEAT] Tasks: ${completedTasks}/${totalTasks} | Current: ${currentLabel}`, 'INFO');
+          } catch (e) {
+            // Silently ignore
+          }
+
+          // --- Improvement 1: Progress file tail ---
+          try {
+            const progressPath = CONFIG.paths.progress;
+            if (fs.existsSync(progressPath)) {
+              const progressContent = fs.readFileSync(progressPath, 'utf8');
+              const progressLines = progressContent.trim().split('\n');
+              const tail = progressLines.slice(-3).map(l => l.trim()).join(' | ');
+              if (tail) {
+                log(`[HEARTBEAT] Progress tail: ${tail}`, 'INFO');
+              }
+            }
+          } catch (e) {
+            // File may not exist yet, silently ignore
+          }
+
+          // --- Improvement 2: Recently modified files ---
+          try {
+            const findCmd = `find "${CONFIG.paths.projectRoot}" -type f -mmin -2 -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/oroboreo/archives/*" 2>/dev/null`;
+            const modifiedFiles = execSync(findCmd, { timeout: 5000 }).toString().trim();
+            if (modifiedFiles) {
+              const files = modifiedFiles.split('\n').filter(Boolean);
+              const latest = path.basename(files[files.length - 1]);
+              log(`[HEARTBEAT] Files modified (last 2m): ${files.length} | Latest: ${latest}`, 'INFO');
+            }
+          } catch (e) {
+            // Silently ignore
+          }
+
         }, CONFIG.heartbeatIntervalMs);
 
         childProcess.stdout.on('data', (data) => {
