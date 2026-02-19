@@ -36,6 +36,10 @@
  *   # Script will ask if you want to use the file
  *   # After generation, new-prompt.md is archived and cleared
  *
+ *   # Non-interactive mode (auto-confirm new-prompt.md if it exists)
+ *   node oroboreo/utils/oreo-generate.js --auto
+ *   # Useful for automated workflows (e.g., bridge API calls)
+ *
  * ============================================================================
  * DIFFERENCE FROM OREO-FEEDBACK.JS
  * ============================================================================
@@ -431,7 +435,12 @@ async function main() {
   }
 
   // Get feature description
-  let feature = process.argv[2];
+  // Check for --auto, --yes, or -y flag
+  const args = process.argv.slice(2);
+  const autoMode = args.some(arg => arg === '--auto' || arg === '--yes' || arg === '-y');
+  
+  // First non-flag arg is the feature description
+  let feature = args.find(arg => !arg.startsWith('--') && !arg.startsWith('-'));
 
   if (!feature) {
     // Check if new-prompt.md exists in project root
@@ -439,7 +448,9 @@ async function main() {
 
     if (fs.existsSync(newPromptPath)) {
       log('Found new-prompt.md in oroboreo/', 'green');
-      const useFile = await question('Use new-prompt.md for feature description? (y/n): ');
+      
+      // Auto-confirm in non-interactive mode
+      const useFile = autoMode ? 'y' : await question('Use new-prompt.md for feature description? (y/n): ');
 
       if (useFile.toLowerCase() === 'y' || useFile.toLowerCase() === 'yes') {
         feature = fs.readFileSync(newPromptPath, 'utf8').trim();
@@ -449,6 +460,10 @@ async function main() {
         feature = await question('> ');
       }
     } else {
+      if (autoMode) {
+        log('\nAuto mode requires either a feature description argument or new-prompt.md file!', 'yellow');
+        process.exit(1);
+      }
       log('Describe the feature you want to build:\n', 'cyan');
       feature = await question('> ');
     }
