@@ -690,10 +690,26 @@ function createPullRequest(sessionName, archivePath) {
     // Create PR using gh CLI
     log(`  Creating PR: ${currentBranch} → ${GIT_CONFIG.baseBranch}`, 'cyan');
 
-    const prCommand = `gh pr create --base "${GIT_CONFIG.baseBranch}" --head "${currentBranch}" --title "${title}" --body "${body}"`;
-    const prUrl = execSync(prCommand, { cwd: PROJECT_ROOT }).toString().trim();
-
-    log(`  ✅ Pull Request created: ${prUrl}`, 'green');
+    // Write body to a temp file to avoid shell interpolation of backticks/special chars
+    const bodyFile = `/tmp/oreo-pr-body-${Date.now()}.md`;
+    fs.writeFileSync(bodyFile, body);
+    let prUrl;
+    try {
+      const prCommand = `gh pr create --base "${GIT_CONFIG.baseBranch}" --head "${currentBranch}" --title "${title}" --body-file "${bodyFile}"`;
+      prUrl = execSync(prCommand, { cwd: PROJECT_ROOT }).toString().trim();
+      log(`  ✅ Pull Request created: ${prUrl}`, 'green');
+    } catch (prCreateErr) {
+      // gh pr create exits non-zero when PR already exists — extract the URL from the error output
+      const existingMatch = (prCreateErr.stderr || prCreateErr.message || '').match(/https:\/\/github\.com\/[^\s]+\/pull\/\d+/);
+      if (existingMatch) {
+        prUrl = existingMatch[0];
+        log(`  ℹ️  PR already exists: ${prUrl}`, 'cyan');
+      } else {
+        throw prCreateErr;
+      }
+    } finally {
+      try { fs.unlinkSync(bodyFile); } catch (_) {}
+    }
 
     // Auto-merge if enabled (with safety checks)
     if (GIT_CONFIG.autoMergeToMain) {
