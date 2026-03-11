@@ -700,7 +700,8 @@ function createPullRequest(sessionName, archivePath) {
       log(`  ✅ Pull Request created: ${prUrl}`, 'green');
     } catch (prCreateErr) {
       // gh pr create exits non-zero when PR already exists — extract the URL from the error output
-      const existingMatch = (prCreateErr.stderr || prCreateErr.message || '').match(/https:\/\/github\.com\/[^\s]+\/pull\/\d+/);
+      const errOutput = (prCreateErr.stderr ? prCreateErr.stderr.toString() : '') || prCreateErr.message || '';
+      const existingMatch = errOutput.match(/https:\/\/github\.com\/[^\s]+\/pull\/\d+/);
       if (existingMatch) {
         prUrl = existingMatch[0];
         log(`  ℹ️  PR already exists: ${prUrl}`, 'cyan');
