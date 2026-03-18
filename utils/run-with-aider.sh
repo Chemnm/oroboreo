@@ -3,39 +3,54 @@
 # OROBOREO - Run Aider with Prompt File
 # ============================================================================
 #
-# This script executes Aider with a prompt file in non-interactive batch mode.
-# It's used by oreo-run.js when AI_PROVIDER=aider.
+# Usage: run-with-aider.sh <prompt-file-path> [file-to-edit ...]
 #
-# Usage: run-with-aider.sh <prompt-file-path>
-#
-# Arguments:
-#   $1 - Prompt file path (required)
-#
-# Environment Variables (set by oreo-run.js):
+# Environment Variables:
 #   AIDER_MODEL          - Model string (e.g. azure/gpt-4o, ollama/llama3)
 #   AZURE_API_KEY        - Azure OpenAI API key
-#   AZURE_API_BASE       - Azure endpoint (e.g. https://your-resource.openai.azure.com)
-#   AZURE_API_VERSION    - API version (e.g. 2024-08-01-preview)
+#   AZURE_API_BASE       - Azure endpoint
+#   AZURE_API_VERSION    - API version
 #   OPENAI_API_KEY       - OpenAI API key (if using OpenAI directly)
+#   AIDER_NO_GIT         - Set to "1" to disable git repo scanning
+#   AIDER_READ_FILES     - Space-separated list of read-only context files
 #
 # ============================================================================
 
-# Export all environment variables so they propagate to child processes
 export AIDER_MODEL
 export AZURE_API_KEY
 export AZURE_API_BASE
 export AZURE_API_VERSION
 export OPENAI_API_KEY
 
+# Aider/LiteLLM uses AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY
+export AZURE_OPENAI_ENDPOINT="${AZURE_API_BASE}"
+export AZURE_OPENAI_API_KEY="${AZURE_API_KEY}"
+
 PROMPT_FILE="$1"
+shift  # remaining args are files to edit
+
 MODEL="${AIDER_MODEL:-azure/gpt-4o}"
 
-# Run aider in non-interactive batch mode:
-#   --yes              = auto-confirm all changes (like --dangerously-skip-permissions)
-#   --no-git           = Oroboreo handles git itself
-#   --no-auto-commits  = belt-and-suspenders: never commit even if git is detected
-#   --message-file     = pass prompt as a file (avoids command line length limits)
-#   --no-pretty        = plain output for log parsing
+# Build git flag
+GIT_FLAG=""
+if [ "${AIDER_NO_GIT}" = "1" ]; then
+  GIT_FLAG="--no-git"
+fi
+
+# Build --file flags for editable files (passed as positional args)
+FILE_FLAGS=""
+for f in "$@"; do
+  FILE_FLAGS="$FILE_FLAGS --file $f"
+done
+
+# Build --read flags for read-only context files
+READ_FLAGS=""
+if [ -n "${AIDER_READ_FILES}" ]; then
+  for f in ${AIDER_READ_FILES}; do
+    READ_FLAGS="$READ_FLAGS --read $f"
+  done
+fi
+
 aider \
   --model "$MODEL" \
   --edit-format diff \
@@ -48,4 +63,7 @@ aider \
   --map-tokens 0 \
   --max-chat-history-tokens 4000 \
   --message-file "$PROMPT_FILE" \
-  --no-pretty
+  --no-pretty \
+  $GIT_FLAG \
+  $FILE_FLAGS \
+  $READ_FLAGS

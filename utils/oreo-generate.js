@@ -519,6 +519,16 @@ async function main() {
   }
   const batFile = path.join(__dirname, runScript);
 
+  // Save aider credentials BEFORE clearProviderEnv() deletes them
+  const savedAider = {
+    AIDER_MODEL_OPUS: process.env.AIDER_MODEL_OPUS,
+    AIDER_MODEL: process.env.AIDER_MODEL,
+    AZURE_API_KEY: process.env.AZURE_API_KEY,
+    AZURE_API_BASE: process.env.AZURE_API_BASE,
+    AZURE_API_VERSION: process.env.AZURE_API_VERSION,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  };
+
   // Clear ALL provider environment variables first
   clearProviderEnv();
 
@@ -569,14 +579,15 @@ async function main() {
 
   } else if (provider === 'aider') {
     // Aider - pass Azure/OpenAI credentials and OPUS model
-    const opusModel = process.env.AIDER_MODEL_OPUS || process.env.AIDER_MODEL;
+    const opusModel = savedAider.AIDER_MODEL_OPUS || savedAider.AIDER_MODEL;
     env.AIDER_MODEL = opusModel;
-    if (process.env.AZURE_API_KEY) {
-      env.AZURE_API_KEY = process.env.AZURE_API_KEY;
-      env.AZURE_API_BASE = process.env.AZURE_API_BASE;
-      env.AZURE_API_VERSION = process.env.AZURE_API_VERSION;
+    env.AIDER_NO_GIT = '1'; // generate only writes cookie-crumbs.md, no repo scan needed
+    if (savedAider.AZURE_API_KEY) {
+      env.AZURE_API_KEY = savedAider.AZURE_API_KEY;
+      env.AZURE_API_BASE = savedAider.AZURE_API_BASE;
+      env.AZURE_API_VERSION = savedAider.AZURE_API_VERSION;
     } else {
-      env.OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+      env.OPENAI_API_KEY = savedAider.OPENAI_API_KEY;
     }
     log(`Spawning Aider [OPUS] with model: ${opusModel}...\n`);
 
@@ -588,7 +599,21 @@ async function main() {
 
   let outputBuffer = '';
 
-  const child = spawn(batFile, [CONFIG.paths.prompt], {
+  // For aider provider: pass cookie-crumbs.md as the editable file
+  // and set read-only context files so Aider has what it needs without scanning the whole repo
+  const spawnArgs = [CONFIG.paths.prompt];
+  if (provider === 'aider') {
+    spawnArgs.push(CONFIG.paths.tasks); // cookie-crumbs.md — the file to write
+    // Read-only context: progress.txt if it exists
+    const readFiles = [];
+    const progressPath = path.join(CONFIG.paths.projectRoot, 'oroboreo', 'progress.txt');
+    if (fs.existsSync(progressPath)) readFiles.push(progressPath);
+    if (readFiles.length > 0) {
+      env.AIDER_READ_FILES = readFiles.join(' ');
+    }
+  }
+
+  const child = spawn(batFile, spawnArgs, {
     env,
     cwd: CONFIG.paths.projectRoot,
     shell: true,
@@ -611,6 +636,32 @@ async function main() {
     if (code === 0) {
       const promptContent = fs.readFileSync(CONFIG.paths.prompt, 'utf8');
       logOpusCost(promptContent.length, outputBuffer.length);
+
+      // For aider provider: extract markdown from stdout and write to cookie-crumbs.md
+      // Aider runs with --no-git so it cannot write files directly
+      if (provider === 'aider') {
+        // Strip aider header lines (Warning:, Tokens:, Cost: etc) — keep markdown content
+        const lines = outputBuffer.split('\n');
+        const mdLines = [];
+        let capturing = false;
+        for (const line of lines) {
+          // Start capturing at first markdown heading or task list item
+          if (!capturing && (line.startsWith('#') || line.startsWith('- [') || line.startsWith('**Session'))) {
+            capturing = true;
+          }
+          // Stop at aider footer lines
+          if (capturing && (line.startsWith('Tokens:') || line.startsWith('Cost:'))) {
+            break;
+          }
+          if (capturing) mdLines.push(line);
+        }
+        if (mdLines.length > 0) {
+          fs.writeFileSync(CONFIG.paths.tasks, mdLines.join('\n').trim() + '\n');
+          log('Written task list to cookie-crumbs.md', 'green');
+        } else {
+          log('Warning: could not extract markdown from Aider output', 'yellow');
+        }
+      }
 
       // Count tasks
       if (fs.existsSync(CONFIG.paths.tasks)) {

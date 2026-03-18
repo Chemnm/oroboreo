@@ -446,6 +446,16 @@ After all tasks complete, the human should verify:
   }
   const batFile = path.join(__dirname, runScript);
 
+  // Save aider credentials BEFORE clearProviderEnv() deletes them
+  const savedAider = {
+    AIDER_MODEL_OPUS: process.env.AIDER_MODEL_OPUS,
+    AIDER_MODEL: process.env.AIDER_MODEL,
+    AZURE_API_KEY: process.env.AZURE_API_KEY,
+    AZURE_API_BASE: process.env.AZURE_API_BASE,
+    AZURE_API_VERSION: process.env.AZURE_API_VERSION,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  };
+
   // Clear ALL provider environment variables first
   clearProviderEnv();
 
@@ -495,14 +505,15 @@ After all tasks complete, the human should verify:
     console.log(`🚀 Spawning Architect (Opus via Claude Subscription: ${CONFIG.model.id})...`);
 
   } else if (provider === 'aider') {
-    const opusModel = process.env.AIDER_MODEL_OPUS || process.env.AIDER_MODEL;
+    const opusModel = savedAider.AIDER_MODEL_OPUS || savedAider.AIDER_MODEL;
     env.AIDER_MODEL = opusModel;
-    if (process.env.AZURE_API_KEY) {
-      env.AZURE_API_KEY = process.env.AZURE_API_KEY;
-      env.AZURE_API_BASE = process.env.AZURE_API_BASE;
-      env.AZURE_API_VERSION = process.env.AZURE_API_VERSION;
+    env.AIDER_NO_GIT = '1'; // feedback only writes cookie-crumbs.md, no repo scan needed
+    if (savedAider.AZURE_API_KEY) {
+      env.AZURE_API_KEY = savedAider.AZURE_API_KEY;
+      env.AZURE_API_BASE = savedAider.AZURE_API_BASE;
+      env.AZURE_API_VERSION = savedAider.AZURE_API_VERSION;
     } else {
-      env.OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+      env.OPENAI_API_KEY = savedAider.OPENAI_API_KEY;
     }
     console.log(`🚀 Spawning Architect (Aider [OPUS] with model: ${opusModel})...`);
 
