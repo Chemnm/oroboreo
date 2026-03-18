@@ -429,8 +429,19 @@ async function main() {
     // Claude Code Subscription - no validation needed
     // User must have run: npx @anthropic-ai/claude-code login
     log('Using Claude Code Subscription (ensure you have run: npx @anthropic-ai/claude-code login)\n');
+  } else if (provider === 'aider') {
+    if (!process.env.AZURE_API_KEY && !process.env.OPENAI_API_KEY) {
+      log('AZURE_API_KEY or OPENAI_API_KEY not set! Please configure oroboreo/.env', 'yellow');
+      process.exit(1);
+    }
+    const opusModel = process.env.AIDER_MODEL_OPUS || process.env.AIDER_MODEL;
+    if (!opusModel) {
+      log('AIDER_MODEL_OPUS or AIDER_MODEL not set! Please configure oroboreo/.env', 'yellow');
+      process.exit(1);
+    }
+    log(`Using Aider [OPUS] with model: ${opusModel}\n`);
   } else {
-    log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, foundry, anthropic, subscription`, 'yellow');
+    log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, foundry, anthropic, subscription, aider`, 'yellow');
     process.exit(1);
   }
 
@@ -500,7 +511,12 @@ async function main() {
 
   // Use .sh on Linux/macOS, .bat on Windows
   const isWindows = process.platform === 'win32';
-  const runScript = isWindows ? 'run-with-prompt.bat' : 'run-with-prompt.sh';
+  let runScript;
+  if (provider === 'aider') {
+    runScript = 'run-with-aider.sh';
+  } else {
+    runScript = isWindows ? 'run-with-prompt.bat' : 'run-with-prompt.sh';
+  }
   const batFile = path.join(__dirname, runScript);
 
   // Clear ALL provider environment variables first
@@ -551,9 +567,22 @@ async function main() {
     // Claude Code will use logged-in claude.ai account
     log('Spawning via Claude Subscription...\n');
 
+  } else if (provider === 'aider') {
+    // Aider - pass Azure/OpenAI credentials and OPUS model
+    const opusModel = process.env.AIDER_MODEL_OPUS || process.env.AIDER_MODEL;
+    env.AIDER_MODEL = opusModel;
+    if (process.env.AZURE_API_KEY) {
+      env.AZURE_API_KEY = process.env.AZURE_API_KEY;
+      env.AZURE_API_BASE = process.env.AZURE_API_BASE;
+      env.AZURE_API_VERSION = process.env.AZURE_API_VERSION;
+    } else {
+      env.OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    }
+    log(`Spawning Aider [OPUS] with model: ${opusModel}...\n`);
+
   } else {
     log(`Invalid AI_PROVIDER: ${provider}`, 'yellow');
-    log('Valid options: bedrock, foundry, anthropic, subscription', 'yellow');
+    log('Valid options: bedrock, foundry, anthropic, subscription, aider', 'yellow');
     process.exit(1);
   }
 
