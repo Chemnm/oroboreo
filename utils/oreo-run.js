@@ -268,6 +268,32 @@ function trackCost(task, model, promptText, responseText) {
 }
 
 // ============================================================================
+// AIDER HELPERS
+// ============================================================================
+
+// Parse the **Files:** section from a task's details string.
+// Returns an array of relative file paths listed under that section.
+function extractFilesFromTask(taskDetails) {
+  const files = [];
+  const lines = taskDetails.split('\n');
+  let inFilesSection = false;
+  for (const line of lines) {
+    if (line.includes('**Files:**')) { inFilesSection = true; continue; }
+    if (inFilesSection) {
+      // Stop at the next bold section header like **Details:** or **Objective:**
+      if (line.trim().startsWith('**') && line.trim().endsWith('**:')) break;
+      if (line.trim().startsWith('**') && line.includes(':**')) break;
+      // Extract file paths — match bare paths or backtick-quoted paths on bullet lines
+      const match = line.match(/[-*]?\s*`?([^\s`→,]+\.[a-zA-Z]{1,5})`?/);
+      if (match && !match[1].startsWith('*') && !match[1].startsWith('#')) {
+        files.push(match[1]);
+      }
+    }
+  }
+  return files;
+}
+
+// ============================================================================
 // TASK PARSING (cookie-crumbs.md)
 // ============================================================================
 
@@ -981,6 +1007,22 @@ async function main() {
       process.exit(1);
     }
 
+    // For aider: resolve files from the task's **Files:** section and pass as --file args.
+    // This prevents Aider from asking "please add these files to the chat" on attempt 1.
+    const aiderFileArgs = [];
+    if (provider === 'aider') {
+      const taskFiles = extractFilesFromTask(task.details || '');
+      for (const f of taskFiles) {
+        const absPath = path.resolve(CONFIG.paths.projectRoot, f.trim());
+        if (fs.existsSync(absPath)) {
+          aiderFileArgs.push(absPath);
+        }
+      }
+      if (aiderFileArgs.length > 0) {
+        log(`Passing ${aiderFileArgs.length} file(s) to Aider: ${aiderFileArgs.map(f => path.relative(CONFIG.paths.projectRoot, f)).join(', ')}`, 'INFO');
+      }
+    }
+
     log('Spawning Claude Code agent...', 'INFO');
 
     try {
@@ -996,7 +1038,7 @@ async function main() {
 
       // Create execution promise with heartbeat monitoring
       const executionPromise = new Promise((resolve, reject) => {
-        childProcess = spawn(batFile, [CONFIG.paths.prompt], {
+        childProcess = spawn(batFile, [CONFIG.paths.prompt, ...aiderFileArgs], {
           env,
           cwd: CONFIG.paths.projectRoot,
           shell: true,

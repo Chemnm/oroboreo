@@ -216,6 +216,90 @@ function getLatestArchive() {
 }
 
 // ============================================================================
+// AIDER-SPECIFIC PROMPT
+// ============================================================================
+
+// Aider has no file-system tools with --no-git, so we skip exploration instructions
+// and ask for pure markdown output that Oroboreo captures and writes to cookie-crumbs.md.
+function buildAiderFeedbackPrompt(feedback, projectContext, latestArchive) {
+  const archiveNote = latestArchive
+    ? `The most recent session archive is at \`${latestArchive.path}\`. Use that as context for what was recently changed.`
+    : 'No previous archive found.';
+
+  return `You are the **Lead Architect** for this project.
+
+**SYSTEM RULES (from creme-filling.md):**
+${projectContext || 'No system rules loaded.'}
+
+---
+
+A human tester has reported the following issues during manual testing:
+
+"""
+${feedback}
+"""
+
+**Recent context:** ${archiveNote}
+
+---
+
+## Your Task
+
+Output ONLY the complete updated \`cookie-crumbs.md\` file content.
+Do NOT write any explanation, preamble, or code block wrappers.
+Start your response directly with the **Session** line (or the first task line if appending).
+
+If a cookie-crumbs.md already exists for this session, output ALL existing tasks (preserving their checked/unchecked state) PLUS new tasks appended after them, renumbered sequentially.
+
+If starting fresh, use this header:
+
+**Session**: <descriptive-kebab-case-name — NO dates, e.g. "fix-login-flow", "fix-assumption-navigation">
+**Created**: ${new Date().toISOString().slice(0, 16).replace('T', ' ')}
+**Status**: Ready for execution
+
+---
+
+### Feature: <One-line title describing the fix>
+<2-3 sentence summary.>
+
+---
+
+## Tasks
+
+For each issue found, add a task in this format:
+
+- [ ] **Task N: <Title>** [SIMPLE|COMPLEX|CRITICAL]
+  - **Objective:** What needs to be fixed
+  - **Files:** List files to modify
+  - **Details:**
+    - Step 1
+    - Step 2
+  - **Verification:** Scriptable verification command (NEVER "manually check")
+
+---
+
+## Human UI Verification
+
+After all tasks complete, the human should verify:
+- [ ] Issue is fixed
+- [ ] No regressions introduced
+
+---
+
+## Complexity Tag Guide
+- **[SIMPLE]** = straightforward change, no deep reasoning needed
+- **[COMPLEX]** = multi-file, architecture decision, or DB change
+- **[CRITICAL]** = security, data migration, or breaking change
+
+## Verification Rules
+- MUST be a shell/node command, never "open browser and check"
+- For UI tasks use: \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --selector SELECTOR\`
+- For API tasks use curl or a node script
+
+Now output the cookie-crumbs.md content:`;
+}
+
+// ============================================================================
 // MAIN
 // ============================================================================
 
@@ -433,8 +517,11 @@ After all tasks complete, the human should verify:
 \`\`\`
 `;
 
-  // Save prompt
-  fs.writeFileSync(CONFIG.paths.prompt, architectPrompt);
+  // Save prompt — use aider-specific prompt when provider is aider
+  const finalPrompt = provider === 'aider'
+    ? buildAiderFeedbackPrompt(feedback, projectContext, latestArchive)
+    : architectPrompt;
+  fs.writeFileSync(CONFIG.paths.prompt, finalPrompt);
 
   // Run Opus - use .sh on Linux/macOS, .bat on Windows
   const isWindows = process.platform === 'win32';
@@ -548,6 +635,35 @@ After all tasks complete, the human should verify:
     if (code === 0) {
       const promptContent = fs.readFileSync(CONFIG.paths.prompt, 'utf8');
       logArchitectCost(promptContent.length, outputBuffer.length);
+
+      // For aider provider: extract markdown from stdout and write to cookie-crumbs.md
+      // Aider runs with --no-git so it cannot write files directly
+      if (provider === 'aider') {
+        const lines = outputBuffer.split('\n');
+        const mdLines = [];
+        let capturing = false;
+        for (const line of lines) {
+          if (!capturing && (line.startsWith('#') || line.startsWith('- [') || line.startsWith('**Session'))) {
+            capturing = true;
+          }
+          if (capturing && (line.startsWith('Tokens:') || line.startsWith('Cost:'))) break;
+          if (capturing) mdLines.push(line);
+        }
+        if (mdLines.length > 0) {
+          fs.writeFileSync(CONFIG.paths.tasks, mdLines.join('\n').trim() + '\n');
+          console.log('✅ Written updated tasks to cookie-crumbs.md');
+        } else {
+          console.log('⚠️  Warning: could not extract markdown from Aider output');
+        }
+        // Strip any leftover diff conflict markers
+        if (fs.existsSync(CONFIG.paths.tasks)) {
+          const raw = fs.readFileSync(CONFIG.paths.tasks, 'utf8');
+          if (raw.includes('<<<<<<< SEARCH') || raw.includes('>>>>>>> REPLACE')) {
+            const replaceMatch = raw.match(/=======\n([\s\S]*?)>>>>>>> REPLACE/);
+            if (replaceMatch) fs.writeFileSync(CONFIG.paths.tasks, replaceMatch[1].trim() + '\n');
+          }
+        }
+      }
 
       console.log('');
       console.log('===============================================================================');
