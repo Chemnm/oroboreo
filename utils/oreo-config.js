@@ -128,6 +128,16 @@ function clearProviderEnv() {
   delete process.env.ANTHROPIC_FOUNDRY_BASE_URL_SONNET;
   delete process.env.ANTHROPIC_FOUNDRY_BASE_URL_HAIKU;
 
+  // Aider / Azure OpenAI variables
+  delete process.env.AIDER_MODEL;
+  delete process.env.AIDER_MODEL_OPUS;
+  delete process.env.AIDER_MODEL_SONNET;
+  delete process.env.AIDER_MODEL_HAIKU;
+  delete process.env.AZURE_API_KEY;
+  delete process.env.AZURE_API_BASE;
+  delete process.env.AZURE_API_VERSION;
+  delete process.env.OPENAI_API_KEY;
+
   // Shared variables that can cause conflicts
   delete process.env.ANTHROPIC_MODEL;
 }
@@ -177,6 +187,19 @@ function getModelConfig() {
     return MODELS;
   } else if (provider === 'foundry') {
     return FOUNDRY_MODELS;
+  } else if (provider === 'aider') {
+    // Aider supports per-tier models via AIDER_MODEL_OPUS/SONNET/HAIKU env vars.
+    // Falls back to AIDER_MODEL for all tiers if per-tier vars are not set.
+    // Cost values default to gpt-4o pricing; update to match your deployed models.
+    const fallback = process.env.AIDER_MODEL || 'azure/gpt-4o';
+    const opusId   = process.env.AIDER_MODEL_OPUS   || fallback;
+    const sonnetId = process.env.AIDER_MODEL_SONNET || fallback;
+    const haikuId  = process.env.AIDER_MODEL_HAIKU  || fallback;
+    return {
+      OPUS:   { name: opusId,   id: opusId,   inputCostPer1M: 10, outputCostPer1M: 30,  maxOutput: 16384, maxThinking: 0 },
+      SONNET: { name: sonnetId, id: sonnetId, inputCostPer1M: 5,  outputCostPer1M: 15,  maxOutput: 16384, maxThinking: 0 },
+      HAIKU:  { name: haikuId,  id: haikuId,  inputCostPer1M: 0.15, outputCostPer1M: 0.6, maxOutput: 16384, maxThinking: 0 },
+    };
   } else {
     // Both 'anthropic' and 'subscription' use the same model aliases
     // The difference is in authentication (API key vs. claude.ai account)

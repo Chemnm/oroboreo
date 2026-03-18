@@ -764,8 +764,23 @@ async function main() {
     // Claude Code Subscription - no validation needed
     // User must have run: npx @anthropic-ai/claude-code login
     log('Using Claude Code Subscription (ensure you have run: npx @anthropic-ai/claude-code login)');
+  } else if (provider === 'aider') {
+    if (!process.env.AZURE_API_KEY && !process.env.OPENAI_API_KEY) {
+      log('AZURE_API_KEY or OPENAI_API_KEY not set! Please configure oroboreo/.env', 'ERROR');
+      process.exit(1);
+    }
+    const hasAiderModel = process.env.AIDER_MODEL ||
+      process.env.AIDER_MODEL_OPUS ||
+      process.env.AIDER_MODEL_SONNET ||
+      process.env.AIDER_MODEL_HAIKU;
+    if (!hasAiderModel) {
+      log('No Aider model set! Set AIDER_MODEL (single model) or AIDER_MODEL_OPUS/SONNET/HAIKU (per-tier). Please configure oroboreo/.env', 'ERROR');
+      process.exit(1);
+    }
+    const displayModel = process.env.AIDER_MODEL || `OPUS=${process.env.AIDER_MODEL_OPUS} SONNET=${process.env.AIDER_MODEL_SONNET} HAIKU=${process.env.AIDER_MODEL_HAIKU}`;
+    log(`Using Aider with model(s): ${displayModel}`);
   } else {
-    log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, foundry, anthropic, subscription`, 'ERROR');
+    log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, foundry, anthropic, subscription, aider`, 'ERROR');
     process.exit(1);
   }
 
@@ -857,10 +872,13 @@ async function main() {
     const prompt = constructPrompt(task);
     fs.writeFileSync(CONFIG.paths.prompt, prompt);
 
-    // 5. Execute Claude Code
+    // 5. Execute agent (Claude Code or Aider)
     // Cross-platform: use .bat on Windows, .sh on Linux/macOS
     const scriptExt = process.platform === 'win32' ? '.bat' : '.sh';
-    const batFile = path.join(__dirname, `run-with-prompt${scriptExt}`);
+    const scriptName = (process.env.AI_PROVIDER || 'subscription').toLowerCase() === 'aider'
+      ? 'run-with-aider'
+      : 'run-with-prompt';
+    const batFile = path.join(__dirname, `${scriptName}${scriptExt}`);
 
     // Note: No chmod needed — spawn uses shell: true which bypasses the execute bit
 
@@ -880,13 +898,25 @@ async function main() {
       ANTHROPIC_FOUNDRY_RESOURCE_HAIKU: process.env.ANTHROPIC_FOUNDRY_RESOURCE_HAIKU,
       ANTHROPIC_FOUNDRY_BASE_URL_OPUS: process.env.ANTHROPIC_FOUNDRY_BASE_URL_OPUS,
       ANTHROPIC_FOUNDRY_BASE_URL_SONNET: process.env.ANTHROPIC_FOUNDRY_BASE_URL_SONNET,
-      ANTHROPIC_FOUNDRY_BASE_URL_HAIKU: process.env.ANTHROPIC_FOUNDRY_BASE_URL_HAIKU
+      ANTHROPIC_FOUNDRY_BASE_URL_HAIKU: process.env.ANTHROPIC_FOUNDRY_BASE_URL_HAIKU,
+      // Aider / Azure OpenAI
+      AIDER_MODEL: process.env.AIDER_MODEL,
+      AIDER_MODEL_OPUS: process.env.AIDER_MODEL_OPUS,
+      AIDER_MODEL_SONNET: process.env.AIDER_MODEL_SONNET,
+      AIDER_MODEL_HAIKU: process.env.AIDER_MODEL_HAIKU,
+      AZURE_API_KEY: process.env.AZURE_API_KEY,
+      AZURE_API_BASE: process.env.AZURE_API_BASE,
+      AZURE_API_VERSION: process.env.AZURE_API_VERSION,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY
     };
 
     // Clear ALL provider environment variables first
-    clearProviderEnv();
-
+    // Skip for aider — it uses different vars (AZURE_API_KEY etc) that don't
+    // conflict with Claude Code vars, and clearProviderEnv would wipe them on retry
     const provider = (process.env.AI_PROVIDER || 'subscription').toLowerCase();
+    if (provider !== 'aider') {
+      clearProviderEnv();
+    }
 
     const env = {
       ...process.env,  // Start fresh after clearProviderEnv()
@@ -934,8 +964,20 @@ async function main() {
       // Claude Code will use logged-in claude.ai account
       log(`Using Claude Subscription with model: ${model.id}`, 'INFO');
 
+    } else if (provider === 'aider') {
+      // Aider - resolve per-tier model, falling back to AIDER_MODEL
+      const modelKey = Object.keys(CONFIG.models).find(k => CONFIG.models[k] === model) || 'HAIKU';
+      const tierVar = `AIDER_MODEL_${modelKey}`;
+      const resolvedModel = savedCredentials[tierVar] || savedCredentials.AIDER_MODEL || model.id;
+      env.AIDER_MODEL = resolvedModel;
+      env.AZURE_API_KEY = savedCredentials.AZURE_API_KEY;
+      env.AZURE_API_BASE = savedCredentials.AZURE_API_BASE;
+      env.AZURE_API_VERSION = savedCredentials.AZURE_API_VERSION;
+      env.OPENAI_API_KEY = savedCredentials.OPENAI_API_KEY;
+      log(`Using Aider [${modelKey}] with model: ${resolvedModel}`, 'INFO');
+
     } else {
-      log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, foundry, anthropic, subscription`, 'ERROR');
+      log(`Invalid AI_PROVIDER: ${provider}. Valid options: bedrock, foundry, anthropic, subscription, aider`, 'ERROR');
       process.exit(1);
     }
 
@@ -1110,6 +1152,24 @@ async function main() {
 
       // 6. Post-execution check
       log('Post-execution: Checking task completion status...', 'INFO');
+
+      // Aider cannot mark its own tasks complete — do it on its behalf after clean exit,
+      // but only if Aider actually modified project files (not just oroboreo housekeeping files)
+      if (provider === 'aider') {
+        const aiderModifiedFiles = outputBuffer.match(/^Applied edit to (.+)$/m);
+        if (aiderModifiedFiles) {
+          const cookiePath = path.join(CONFIG.paths.projectRoot, 'oroboreo', 'cookie-crumbs.md');
+          const content = fs.readFileSync(cookiePath, 'utf8');
+          const taskPattern = new RegExp(`(- )\\[ \\]( \\*\\*Task ${task.id}:)`);
+          if (taskPattern.test(content)) {
+            fs.writeFileSync(cookiePath, content.replace(taskPattern, '$1[x]$2'), 'utf8');
+            log(`Aider provider: marked Task ${task.id} complete (edited: ${aiderModifiedFiles[1]})`, 'INFO');
+          }
+        } else {
+          log(`Aider provider: no file edits detected for Task ${task.id} — will retry`, 'WARN');
+        }
+      }
+
       const updatedTasks = parseTasks();
       const isComplete = updatedTasks.find(t => t.id === task.id)?.completed;
       log(`Post-execution: Task ${task.id} completion status: ${isComplete ? 'COMPLETE' : 'INCOMPLETE'}`, 'INFO');
