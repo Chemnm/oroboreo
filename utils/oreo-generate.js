@@ -370,6 +370,79 @@ Write directly to \`oroboreo/cookie-crumbs.md\` using clear markdown.
 `;
 }
 
+// Aider-specific prompt: no tool-use exploration phase, pure markdown output only.
+// Oroboreo captures stdout and writes cookie-crumbs.md directly.
+function buildAiderGeneratePrompt(feature, context) {
+  return `You are an expert product manager and software architect.
+
+A developer has requested the following feature:
+
+**Feature Request:**
+${feature}
+
+**Project Context (system rules):**
+${context || 'No project context available.'}
+
+---
+
+## Your Task
+
+Output ONLY a valid cookie-crumbs.md task list in the exact format below.
+Do NOT write any explanation, preamble, or code blocks wrapping the output.
+Start your response directly with the **Session** line.
+
+---
+
+## Required Output Format
+
+**Session**: <descriptive-kebab-case-name — NO dates, e.g. "add-user-auth", "fix-assumption-navigation">
+**Created**: ${new Date().toISOString().slice(0, 16).replace('T', ' ')}
+**Status**: Ready for execution
+
+---
+
+### Feature: <One-line title>
+<2-3 sentence summary of what this feature does and why.>
+
+---
+
+## Tasks
+
+- [ ] **Task 1: <Title>** [SIMPLE|COMPLEX|CRITICAL]
+  - **Objective:** What needs to be accomplished
+  - **Files:** List of files to modify
+  - **Details:**
+    - Step 1
+    - Step 2
+  - **Verification:** Scriptable verification command (NEVER "manually check")
+
+(Repeat for 6-12 tasks total, ordered logically)
+
+---
+
+## Human UI Verification
+
+After all tasks complete, verify:
+- [ ] <Manual check 1>
+- [ ] <Manual check 2>
+- [ ] No regressions introduced
+
+---
+
+## Complexity Tag Guide
+- **[SIMPLE]** = straightforward change, no deep reasoning needed (cheap model)
+- **[COMPLEX]** = multi-file, architecture decision, or DB change (smart model)
+- **[CRITICAL]** = security, data migration, or breaking change (smart model)
+
+## Verification Rules
+- MUST be a shell/node command, never "open browser and check"
+- For UI tasks use: \`node oroboreo/tests/reusable/verify-ui.js --url URL --wait-for-server --selector SELECTOR\`
+- For API tasks use curl or a node script
+- Check \`oroboreo/tests/reusable/\` for existing scripts before creating new ones
+
+Now output the cookie-crumbs.md content:`;
+}
+
 // ============================================================================
 // MAIN
 // ============================================================================
@@ -506,7 +579,9 @@ async function main() {
   log('\nSpawning Opus 4.6 to generate tasks...', 'cyan');
   log('(This may take 30-60 seconds)\n', 'yellow');
 
-  const prompt = buildGeneratePrompt(feature, context);
+  const prompt = provider === 'aider'
+    ? buildAiderGeneratePrompt(feature, context)
+    : buildGeneratePrompt(feature, context);
   fs.writeFileSync(CONFIG.paths.prompt, prompt);
 
   // Use .sh on Linux/macOS, .bat on Windows
@@ -599,19 +674,8 @@ async function main() {
 
   let outputBuffer = '';
 
-  // For aider provider: pass cookie-crumbs.md as the editable file
-  // and set read-only context files so Aider has what it needs without scanning the whole repo
+  // For aider: prompt-only, no --file args. Oroboreo captures stdout and writes cookie-crumbs.md.
   const spawnArgs = [CONFIG.paths.prompt];
-  if (provider === 'aider') {
-    spawnArgs.push(CONFIG.paths.tasks); // cookie-crumbs.md — the file to write
-    // Read-only context: progress.txt if it exists
-    const readFiles = [];
-    const progressPath = path.join(CONFIG.paths.projectRoot, 'oroboreo', 'progress.txt');
-    if (fs.existsSync(progressPath)) readFiles.push(progressPath);
-    if (readFiles.length > 0) {
-      env.AIDER_READ_FILES = readFiles.join(' ');
-    }
-  }
 
   const child = spawn(batFile, spawnArgs, {
     env,
@@ -660,6 +724,19 @@ async function main() {
           log('Written task list to cookie-crumbs.md', 'green');
         } else {
           log('Warning: could not extract markdown from Aider output', 'yellow');
+        }
+      }
+
+      // Strip any leftover Aider diff conflict markers from cookie-crumbs.md
+      if (fs.existsSync(CONFIG.paths.tasks)) {
+        const raw = fs.readFileSync(CONFIG.paths.tasks, 'utf8');
+        if (raw.includes('<<<<<<< SEARCH') || raw.includes('>>>>>>> REPLACE')) {
+          // Keep only the REPLACE block content (the new generated content)
+          const replaceMatch = raw.match(/=======\n([\s\S]*?)>>>>>>> REPLACE/);
+          if (replaceMatch) {
+            fs.writeFileSync(CONFIG.paths.tasks, replaceMatch[1].trim() + '\n');
+            log('Cleaned diff markers from cookie-crumbs.md', 'green');
+          }
         }
       }
 
