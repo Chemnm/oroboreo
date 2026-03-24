@@ -22,6 +22,12 @@ export AZURE_API_BASE
 export AZURE_API_VERSION
 export OPENAI_API_KEY
 
+# Non-OpenAI Azure models (GLM-5, Kimi, DeepSeek, MiniMax, etc.)
+# These use services.ai.azure.com instead of cognitiveservices.azure.com
+# Model prefix: azure_ai/<model-name>
+export AZURE_AI_API_KEY
+export AZURE_AI_API_BASE
+
 # Aider/LiteLLM uses AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY
 export AZURE_OPENAI_ENDPOINT="${AZURE_API_BASE}"
 export AZURE_OPENAI_API_KEY="${AZURE_API_KEY}"

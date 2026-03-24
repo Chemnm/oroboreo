@@ -402,7 +402,7 @@ Oroboreo automatically uses the correct model IDs based on your provider:
 | Model | Cost (per 1M tokens) | Used For |
 |-------|---------------------|----------|
 | **Opus 4.6** | $5/$25 | Architect (PRD generation) |
-| **Sonnet 4.5** | $3/$15 | Complex tasks `[COMPLEX]` |
+| **Sonnet 4.6** | $3/$15 | Complex tasks `[COMPLEX]` |
 | **Haiku 4.5** | $1/$5 | Simple tasks `[SIMPLE]` |
 
 **Note:** Costs are identical across all providers (Bedrock, Foundry, Anthropic API).

@@ -362,8 +362,8 @@ async function main() {
     // User must have run: npx @anthropic-ai/claude-code login
     console.log('💡 Using Claude Code Subscription (ensure you have run: npx @anthropic-ai/claude-code login)');
   } else if (provider === 'aider') {
-    if (!process.env.AZURE_API_KEY && !process.env.OPENAI_API_KEY) {
-      console.error('❌ AZURE_API_KEY or OPENAI_API_KEY not set! Please configure oroboreo/.env');
+    if (!process.env.AZURE_API_KEY && !process.env.AZURE_AI_API_KEY && !process.env.OPENAI_API_KEY) {
+      console.error('❌ AZURE_API_KEY, AZURE_AI_API_KEY, or OPENAI_API_KEY not set! Please configure oroboreo/.env');
       process.exit(1);
     }
     const opusModel = process.env.AIDER_MODEL_OPUS || process.env.AIDER_MODEL;
@@ -540,6 +540,8 @@ After all tasks complete, the human should verify:
     AZURE_API_KEY: process.env.AZURE_API_KEY,
     AZURE_API_BASE: process.env.AZURE_API_BASE,
     AZURE_API_VERSION: process.env.AZURE_API_VERSION,
+    AZURE_AI_API_KEY: process.env.AZURE_AI_API_KEY,
+    AZURE_AI_API_BASE: process.env.AZURE_AI_API_BASE,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   };
 
@@ -595,10 +597,12 @@ After all tasks complete, the human should verify:
     const opusModel = savedAider.AIDER_MODEL_OPUS || savedAider.AIDER_MODEL;
     env.AIDER_MODEL = opusModel;
     env.AIDER_NO_GIT = '1'; // feedback only writes cookie-crumbs.md, no repo scan needed
-    if (savedAider.AZURE_API_KEY) {
+    if (savedAider.AZURE_API_KEY || savedAider.AZURE_AI_API_KEY) {
       env.AZURE_API_KEY = savedAider.AZURE_API_KEY;
       env.AZURE_API_BASE = savedAider.AZURE_API_BASE;
       env.AZURE_API_VERSION = savedAider.AZURE_API_VERSION;
+      env.AZURE_AI_API_KEY = savedAider.AZURE_AI_API_KEY || savedAider.AZURE_API_KEY;
+      env.AZURE_AI_API_BASE = savedAider.AZURE_AI_API_BASE;
     } else {
       env.OPENAI_API_KEY = savedAider.OPENAI_API_KEY;
     }

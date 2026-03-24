@@ -634,24 +634,23 @@ function gitCommit(task) {
 // ============================================================================
 
 function constructPrompt(task) {
-  const rules = fs.existsSync(CONFIG.paths.rules)
-    ? fs.readFileSync(CONFIG.paths.rules, 'utf8')
-    : '# No creme-filling.md found - please create system rules';
+  // NOTE: creme-filling.md is intentionally NOT loaded here.
+  // It belongs to oro-generate and oro-feedback (PRD generation), which encode the
+  // project rules into the task descriptions in cookie-crumbs.md. Loading it per task
+  // would waste 250K+ tokens on every execution call.
 
   const progress = fs.existsSync(CONFIG.paths.progress)
     ? fs.readFileSync(CONFIG.paths.progress, 'utf8')
     : '';
 
-  // Context Truncation for large progress files
+  // Truncate progress: keep header + tail
   const header = progress.slice(0, 5000);
-  const tail = progress.slice(-50000);
+  const tail   = progress.slice(-50000);
   const history = progress.length > 55000
     ? `${header}\n\n... [Truncated] ...\n\n${tail}`
     : progress;
 
   return `
-${rules}
-
 ===============================================================================
 PROGRESS HISTORY
 ===============================================================================
@@ -667,7 +666,7 @@ ${task.details}
 EXECUTION RULES
 ===============================================================================
 1. Complete the task described above.
-2. Follow all rules in creme-filling.md (the system rules above).
+2. Follow the task instructions precisely.
 3. CRITICAL: When the task is done, you MUST edit oroboreo/cookie-crumbs.md to change "- [ ]" to "- [x]" for this task. This is how the system knows you finished. If you do not mark the checkbox, the task will be retried. Do NOT ask what to do next — just mark it and exit.
 4. Log important findings to progress.txt.
 5. Do NOT create unnecessary files or over-engineer.
@@ -791,8 +790,8 @@ async function main() {
     // User must have run: npx @anthropic-ai/claude-code login
     log('Using Claude Code Subscription (ensure you have run: npx @anthropic-ai/claude-code login)');
   } else if (provider === 'aider') {
-    if (!process.env.AZURE_API_KEY && !process.env.OPENAI_API_KEY) {
-      log('AZURE_API_KEY or OPENAI_API_KEY not set! Please configure oroboreo/.env', 'ERROR');
+    if (!process.env.AZURE_API_KEY && !process.env.AZURE_AI_API_KEY && !process.env.OPENAI_API_KEY) {
+      log('AZURE_API_KEY, AZURE_AI_API_KEY, or OPENAI_API_KEY not set! Please configure oroboreo/.env', 'ERROR');
       process.exit(1);
     }
     const hasAiderModel = process.env.AIDER_MODEL ||
@@ -933,6 +932,8 @@ async function main() {
       AZURE_API_KEY: process.env.AZURE_API_KEY,
       AZURE_API_BASE: process.env.AZURE_API_BASE,
       AZURE_API_VERSION: process.env.AZURE_API_VERSION,
+      AZURE_AI_API_KEY: process.env.AZURE_AI_API_KEY,
+      AZURE_AI_API_BASE: process.env.AZURE_AI_API_BASE,
       OPENAI_API_KEY: process.env.OPENAI_API_KEY
     };
 
@@ -996,9 +997,13 @@ async function main() {
       const tierVar = `AIDER_MODEL_${modelKey}`;
       const resolvedModel = savedCredentials[tierVar] || savedCredentials.AIDER_MODEL || model.id;
       env.AIDER_MODEL = resolvedModel;
+      // azure/* models (gpt-*, o3) → cognitiveservices.azure.com
       env.AZURE_API_KEY = savedCredentials.AZURE_API_KEY;
       env.AZURE_API_BASE = savedCredentials.AZURE_API_BASE;
       env.AZURE_API_VERSION = savedCredentials.AZURE_API_VERSION;
+      // azure_ai/* models (GLM-5, Kimi, DeepSeek, MiniMax, etc.) → services.ai.azure.com/models
+      env.AZURE_AI_API_KEY = savedCredentials.AZURE_AI_API_KEY || savedCredentials.AZURE_API_KEY;
+      env.AZURE_AI_API_BASE = savedCredentials.AZURE_AI_API_BASE;
       env.OPENAI_API_KEY = savedCredentials.OPENAI_API_KEY;
       log(`Using Aider [${modelKey}] with model: ${resolvedModel}`, 'INFO');
 

@@ -17,12 +17,13 @@ const MODELS = {
     // Previous: 'us.anthropic.claude-opus-4-5-20251101-v1:0' (Opus 4.5)
   },
   SONNET: {
-    id: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
-    name: 'Claude Sonnet 4.5',
+    id: 'us.anthropic.claude-sonnet-4-6',
+    name: 'Claude Sonnet 4.6',
     inputCost: 3.0,
     outputCost: 15.0,
     maxOutput: 20000,
     maxThinking: 0
+    // Previous: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0' (Sonnet 4.5)
   },
   HAIKU: {
     id: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
@@ -48,12 +49,13 @@ const ANTHROPIC_MODELS = {
     // Previous: 'opus-4-5' (Opus 4.5)
   },
   SONNET: {
-    id: 'sonnet-4-5',
-    name: 'Claude Sonnet 4.5',
+    id: 'sonnet-4-6',
+    name: 'Claude Sonnet 4.6',
     inputCost: 3.0,
     outputCost: 15.0,
     maxOutput: 20000,
     maxThinking: 0
+    // Previous: 'sonnet-4-5' (Sonnet 4.5)
   },
   HAIKU: {
     id: 'haiku-4-5',
@@ -79,12 +81,13 @@ const FOUNDRY_MODELS = {
     // Previous: 'claude-opus-4-5' (Opus 4.5)
   },
   SONNET: {
-    id: 'claude-sonnet-4-5',
-    name: 'Claude Sonnet 4.5',
+    id: 'claude-sonnet-4-6',
+    name: 'Claude Sonnet 4.6',
     inputCost: 3.0,
     outputCost: 15.0,
     maxOutput: 20000,
     maxThinking: 0
+    // Previous: 'claude-sonnet-4-5' (Sonnet 4.5)
   },
   HAIKU: {
     id: 'claude-haiku-4-5',
@@ -136,6 +139,8 @@ function clearProviderEnv() {
   delete process.env.AZURE_API_KEY;
   delete process.env.AZURE_API_BASE;
   delete process.env.AZURE_API_VERSION;
+  delete process.env.AZURE_AI_API_KEY;
+  delete process.env.AZURE_AI_API_BASE;
   delete process.env.OPENAI_API_KEY;
 
   // Shared variables that can cause conflicts
